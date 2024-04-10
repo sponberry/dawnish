@@ -1,0 +1,205 @@
+mechanic/user/trigger
+mechanic/scheduler/monday
+
+{% assign product_data = array %}
+{% assign tagged_phantom = options.tag_to_signify_phantom_checked_and_all_included_prods_tagged__required | strip %}
+{% assign included_prefix = options.included_products_tag_prefix__required | strip %}
+{% assign phantom_prefix = options.phantom_to_update_tag_prefix__required | strip %}
+{% assign tagged_for_inventory_tag = options.tagged_for_inventory_tag__required | strip %}
+
+{% assign cursor = nil %}
+{% for n in (0..100) %}
+  {% capture query %}
+    query {
+      products(
+        first: 250
+        after: {{ cursor | json }}
+        sortKey: TITLE
+        query: {{ options.query | json }}
+      ) {
+        pageInfo {
+          hasNextPage
+        }
+        edges {
+          cursor
+          node {
+            id
+            title
+            tags
+            variants(first:1) {
+              edges {
+                node {
+                  id
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  {% endcapture %}
+
+  {% assign result = query | shopify %}
+
+  {% if event.preview %}
+    {% capture result_json %}
+      {
+        "data": {
+          "products": {
+            "pageInfo": {
+              "hasNextPage": false
+            },
+            "edges": [
+              {
+                "node": {
+                  "id": "gid://shopify/Product/1234567890",
+                  "title": "[sample product]"
+                }
+              }
+            ]
+          }
+        }
+      }
+    {% endcapture %}
+
+    {% assign result = result_json | parse_json %}
+  {% endif %}
+
+  {% for product_edge in result.data.products.edges %}
+    {% assign product_hash = hash %}
+    {% assign product_hash['admin_id'] = product_edge.node.id %}
+    {% assign product_hash['id'] = product_edge.node.variants.edges[0].node.id %}
+    {% assign product_hash['title'] = product_edge.node.title %}
+    {% assign product_hash['tags'] = product_edge.node.tags %}
+    {% assign product_data[product_data.size] = product_hash %}
+  {% endfor %}
+
+  {% if result.data.products.pageInfo.hasNextPage %}
+    {% assign cursor = result.data.products.edges.last.cursor %}
+  {% else %}
+    {% break %}
+  {% endif %}
+{% endfor %}
+
+{% if options.test_mode__boolean and options.live_mode__boolean %}
+  {% error "Please choose either test mode or live mode." %}
+{% elsif options.test_mode__boolean == false and options.live_mode__boolean == false %}
+  {% error "Please choose either test mode or live mode." %}
+
+{% elsif options.test_mode__boolean %}
+  {% log products_found_count: product_data.size, products_found: product_data %}
+
+{% elsif options.live_mode__boolean %}
+  {% log products_found_count: product_data.size, products_found: product_data %}
+
+  {% for phantom_product in product_data %}
+    {% log phantom_product.title, phantom_product.id %}
+    {% unless phantom_product.tags contains 'test code for reruns' %}
+      {% comment %} 
+        We need to tag the products referenced in this tag so we know to update inventory.
+      {% endcomment %}
+      {% assign productTags = phantom_product.tags %}
+      {% for tag in productTags %}
+          {% if tag contains included_prefix %}
+            {% log tag %}
+            {% assign includedProductGIDs = tag | replace: included_prefix, "" | split: "|" %}
+          {% endif %}
+      {% endfor %}
+      {% if options.allow_included_products_metafield_fetch_backup__boolean %}
+        {% unless includedProductGIDs.size > 0 %}
+          {% comment %}If included product tag not added at phantom creation add it now{% endcomment %}
+          {% log 'needed to fetch metafield'%}
+          {% capture phantomProdQuery %}
+            query {
+              product(id:"{{ phantom_product.id }}") {
+                id
+                included_products: metafield(
+                  namespace: "custom"
+                  key: "included_products"
+                ) {
+                  type
+                  value
+                }
+              }
+            }
+          {% endcapture %}
+          {% assign result = phantomProdQuery | shopify %}
+          {% assign includedProductGIDs = result.data.product["included_products"].value | replace: '[', '' | replace: "]", "," | replace: ",", "" | replace: '"""', "" | replace: '""', "" | replace: '\', '' | remove_first: '"' | remove_last: '"' | split: "," %}
+        {% endunless %}
+      {% endif %}
+      {% for includedProductGID in includedProductGIDs %}
+        {% if includedProductGID.size > 1 %}
+          {% assign phantom_variant_tag_added = false %}
+          {% capture includedProdQuery %}
+            query {
+              product(id:{{ includedProductGID | strip | json }}) {
+                id
+                tags
+              }
+            }
+          {% endcapture %}
+          {% assign result = includedProdQuery | shopify %}
+          {% assign tags = array %}
+          {% assign data_tags = result.data.product.tags | split: ","  %}
+          {% for data_tag in data_tags %}
+            {% assign clean_tag = data_tag | replace: '[', '' | replace: "]", "" | replace: '"""', "" | replace: '""', "" | replace: '\', '' | remove_first: '"' | remove_last: '"' | replace: ",", "" | strip %}
+            {% if clean_tag contains phantom_prefix %}
+              {% assign tags[tags.size] = phantom_prefix 
+          | append: phantom_product.id %}
+            {% else %}
+              {% assign tags[tags.size] = clean_tag %}
+            {% endif %}
+            {% if clean_tag contains phantom_product.id %}
+              {% assign already_tagged = true %}
+            {% endif %}
+          {% endfor %}
+          {% assign tags[tags.size] = tagged_for_inventory_tag %}
+            {% action "shopify" %}
+              mutation {
+                productUpdate(input: {
+                  id: {{ includedProductGID | strip | json }},
+                  tags: {{ tags | json }}
+                }) {
+                  product {
+                    id
+                    handle
+                    tags
+                  }
+                  userErrors {
+                    field
+                    message
+                  }
+                }
+              } 
+            {% endaction %}
+        {% endif %}
+      {% endfor %}
+      {% unless phantom_product.tags contains tagged_phantom %}
+        {% comment %}We then tag phantom so we do not repeat{% endcomment %}
+
+        {% assign updatedTags = array  %}
+        {% for tag in phantom_product.tags %}
+          {% assign updatedTags = updatedTags | push: tag %}
+        {% endfor %}
+        {% assign updatedTags = updatedTags | push: tagged_phantom %}
+        {% action "shopify" %}
+          mutation {
+            productUpdate(input: {
+              id: {{ phantom_product.admin_id | strip | json }},
+              tags: {{ updatedTags | json }}
+            }) {
+              product {
+                id
+                handle
+              }
+              userErrors {
+                field
+                message
+              }
+            }
+          } 
+        {% endaction %}
+      {% endunless %}
+    {% endunless %}
+  {% endfor %}
+{% endif %}

@@ -1,0 +1,177 @@
+shopify/products/update
+
+{% comment %}
+  {{ options.triple_pack_type__required }}
+  {{ options.twin_pack_type__required }}
+  {{ options.phantom_product_tag__required }}
+  {{ options.twin_pack_percent_discount__number_required }}
+  {{ options.triple_pack_percent_discount__number_required }}
+{% endcomment %}
+
+{% assign phantom_tag = options.phantom_product_tag__required | strip %}
+
+{% comment %}
+  mechanic/shopify/bulk_operation
+
+if event.topic == "mechanic/shopify/bulk_operation"
+  assign products = bulkOperation.objects | where: "__typename", "Product"
+  for product in products
+    log product
+    product.data.product["products_included"].value
+
+  endfor
+else
+  mutation {
+    bulkOperationRunQuery(
+    query: """
+      {
+        products {
+          edges {
+            node {
+              id
+              title
+              products_included: metafield(
+                namespace: "custom"
+                key: "products_included"
+              ) {
+                type
+                value
+              }
+            }
+          }
+        }
+      }
+      """
+    ) {
+      bulkOperation {
+        id
+        status
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+endif
+{% endcomment %}
+
+{% assign amendedProduct = event.data %}
+{% unless amendedProduct.tags contains options.phantom_product_tag__required %}
+  {% capture amendedProdQuery %}
+    query {
+      product(id:"{{ amendedProduct.admin_graphql_api_id }}") {
+        id
+        pack_type: metafield(
+          namespace: "custom"
+          key: "pack_type"
+        ) {
+          type
+          value
+        }
+      }
+    }
+    
+  {% endcapture %}
+  {% assign amendedProdResult = amendedProdQuery | shopify %}
+  {% assign amendedProductPackType = amendedProdResult.data.product["pack_type"].value | downcase %}
+  {% assign matchingProducts = array %}
+
+  {% for product in shop.products %}
+      {% capture prodQuery %}
+        query {
+          product(id:"{{ product.admin_graphql_api_id }}") {
+            id
+            products_included: metafield(
+              namespace: "custom"
+              key: "products_included"
+            ) {
+              type
+              value
+            }
+          }
+        }
+      {% endcapture %}
+      {% assign prodResult = prodQuery | shopify %}
+      {% assign products_included = prodResult.data.product["products_included"].value %}
+
+      {% assign productToPush = array %}
+      {% assign productToPush[0] = product %}
+      {% assign productToPush[1] = prodResult.data.product %}
+      {% if products_included contains amendedProduct.admin_graphql_api_id %}
+        {% assign matchingProducts = matchingProducts | push: productToPush %}
+      {% endif %}
+  {% endfor %}
+
+  {% assign matchingProductsCount = matchingProducts | size %}
+{% endunless %}
+
+{% if matchingProductsCount > 0 %}
+  {% assign textOut = "Found " | append: matchingProductsCount | append: " existing phantoms that contain product." %}
+  {% log note: textOut %}
+  {% log matchingProducts %}
+
+  {% if event.topic == "shopify/products/update" or event.topic == "mechanic/user/product" %}
+    {% assign productPrice = 0 %}
+    {% for matchingProduct in matchingProducts %}
+      {% log matchingProduct %}
+      {% assign gid_array = matchingProduct[1]["products_included"].value | replace: "[", "" | replace: "]", "" | replace: '"', "" | replace: "\", "" | split: "," %}
+      {% log matchingProduct[1]["products_included"].value %}
+      {% for gid in gid_array %}
+        {% log gid %}
+        {% capture includedProductQuery %}
+          query {
+            product(id:"{{ gid }}") {
+              id
+              variants(first: 1) {
+                edges {
+                  node {
+                    price
+                  }
+                }
+              }
+            }
+          }
+        {% endcapture %}
+        {% assign includedProductResult = includedProductQuery | shopify %}
+        {% log includedProductResult %}
+        {% assign includedProductPrice = includedProductResult.data.product.variants.edges[0].node.price | plus: 0 %}
+        {% log 'converted price ', includedProductPrice %}
+        {% assign productPrice = productPrice | plus: includedProductPrice %}
+      {% endfor %}
+
+      {% if amendedProductPackType == options.twin_pack_type__required %}
+        {% assign price_multiplier = options.twin_pack_percent_discount__number_required | minus: 1 | times: -1 %}
+      {% else %}
+        {% assign price_multiplier = options.triple_pack_percent_discount__number_required | minus: 1 | times: -1 %}
+      {% endif %}
+    {% action "shopify" %}
+      mutation {
+        productUpdate(input: {
+          id: {{ matchingProduct[0].admin_graphql_api_id | json }},
+          variants: [
+            {
+              id: {{ matchingProduct[0].variants[0].admin_graphql_api_id | json }},
+              price: "{{ productPrice | times: price_multiplier }}",
+              compareAtPrice: "{{ productPrice }}"
+            }
+          ]
+        }) {
+          product {
+            id
+            handle
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      } 
+    {% endaction %}
+    {% endfor %}
+  {% endif %}
+{% else %}
+  {% log note: "Not included in any products or product is phantom." %}
+{% endif %}
+
+

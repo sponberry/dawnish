@@ -1,0 +1,251 @@
+@use './settings' as *;
+
+// Input
+@mixin reset-input {
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  appearance: none;
+
+  &:focus {
+    outline: none;
+  }
+
+  &:hover {
+    outline: none;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    cursor: default;
+  }
+}
+
+// Button
+@mixin reset-btn {
+  text-decoration: none;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  appearance: none;
+
+  &:focus {
+    outline: none;
+  }
+
+  &:hover {
+    text-decoration: none;
+    outline: none;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+}
+
+// Text
+@mixin reset-text {
+  font-size: var(--font-family-base);
+  line-height: var(--line-height-base);
+  font-weight: var(--font-size-base);
+  font-style: normal;
+  text-transform: none;
+  font-variant: normal;
+}
+
+// List
+@mixin reset-list($margin: 0, $padding: 0) {
+  list-style: none;
+  margin: $margin;
+  padding: $padding;
+}
+
+// Mixin: Custom Scrollbar
+@mixin custom-scrollbar($size, $foreground-colour, $background-colour: mix($foreground-colour, white, 50%), $border-width: 3px, $border-radius: 6px) {
+  // For Google Chrome
+  &::-webkit-scrollbar {
+    width: $size;
+    height: $size;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: $foreground-colour;
+    border: $border-width solid $background-colour;
+    border-radius: $border-radius;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: $background-colour;
+  }
+
+  // For Internet Explorer
+  & {
+    scrollbar-face-color: $foreground-colour;
+    scrollbar-track-color: $background-colour;
+  }
+}
+
+// Mixin: Hover
+@mixin hover-focus {
+  &:hover,
+  &:focus {
+    @content;
+  }
+}
+
+// Mixin: Form Placeholder
+@mixin input-placeholder {
+  &.placeholder {
+    @content;
+  }
+
+  &:-moz-placeholder {
+    @content;
+  }
+
+  &::-moz-placeholder {
+    @content;
+  }
+
+  &:-ms-input-placeholder {
+    @content;
+  }
+
+  &::-webkit-input-placeholder {
+    @content;
+  }
+}
+
+// Mixin: Breakpoints
+
+// Up
+@mixin breakpoint-up($breakpoint) {
+  @if map-has-key($breakpoints, $breakpoint) {
+    $breakpoint-value: map-get($breakpoints, $breakpoint);
+
+    @media (min-width: $breakpoint-value) {
+      @content;
+    }
+  } @else {
+    @warn 'Invalid breakpoint: #{$breakpoint}.';
+  }
+}
+
+// Down
+@mixin breakpoint-down($breakpoint) {
+  @if map-has-key($breakpoints, $breakpoint) {
+    $breakpoint-value: map-get($breakpoints, $breakpoint);
+
+    @media (max-width: ($breakpoint-value - 0.02)) {
+      @content;
+    }
+  } @else {
+    @warn 'Invalid breakpoint: #{$breakpoint}.';
+  }
+}
+
+// Between
+@mixin breakpoint-between($lower, $upper) {
+  @if map-has-key($breakpoints, $lower) and map-has-key($breakpoints, $upper) {
+    $lower-breakpoint: map-get($breakpoints, $lower);
+    $upper-breakpoint: map-get($breakpoints, $upper);
+
+    @media (min-width: $lower-breakpoint) and (max-width: ($upper-breakpoint - 0.02)) {
+      @content;
+    }
+  } @else {
+    @if (map-has-key($breakpoints, $lower) == false) {
+      @warn 'Your lower breakpoint was invalid: #{$lower}.';
+    }
+    @if (map-has-key($breakpoints, $upper) == false) {
+      @warn 'Your upper breakpoint was invalid: #{$upper}.';
+    }
+  }
+}
+
+// Mixin: Transition
+@mixin transition($prop, $time: var(--transition-duration), $easing: var(--transition-timing), $delay: 0s) {
+  $transition: ();
+  @for $i from 1 through length($prop) {
+    @for $j from 0 to (length($prop)) - (length($time)) {
+      $time: join($time, nth($time, -1));
+    }
+    @for $j from 0 to (length($prop)) - (length($easing)) {
+      $easing: join($easing, nth($easing, -1));
+    }
+    @for $j from 0 to (length($prop)) - (length($delay)) {
+      $delay: join($delay, nth($delay, -1));
+    }
+
+    $transition: append($transition, (nth($prop, $i) nth($time, $i) nth($easing, $i) nth($delay, $i)), $separator: comma);
+  }
+  transition: $transition;
+}
+// Example: @include transition(width opacity transform, 0.3s 0.4s, linear, 0.1s);
+
+// Mixin: Grid
+// Grid
+@mixin grid($columns: 100%, $rows: auto, $gap: null) {
+  display: grid;
+  grid-template-columns: $columns;
+  grid-template-rows: $rows;
+  @if $gap != null {
+    gap: $gap;
+  }
+}
+
+// Grid Columns
+@mixin grid-columns($columns) {
+  grid-template-columns: $columns;
+}
+
+// Grid Columns
+@mixin grid-rows($rows) {
+  grid-template-rows: $rows;
+}
+
+// Mixing: Container
+@mixin container($max-width: var(--container-max-width)) {
+  width: 100%;
+  max-width: $max-width;
+  margin: 0 auto;
+}
+
+// Mixin: Size
+@mixin size($width, $height: null) {
+  width: $width;
+  @if $height != null {
+    height: $height;
+  } @else {
+    height: auto;
+  }
+}
+
+@mixin modal-box($padding: 2rem) {
+  border-radius: var(--border-radius-lg);
+  background-color: var(--colour-white);
+  box-shadow: 0px 0px 4px 0px rgba(0, 0, 0, 0.25);
+  padding: $padding;
+}
+
+@mixin collection-cols() {
+  grid-template-columns: 100%;
+  gap: 0 2.5rem;
+
+  @include breakpoint-up(lg){
+    grid-template-columns: 1fr 3fr;
+  }
+
+  @include breakpoint-up(xl){
+    grid-template-columns: 1fr 4fr;
+  }
+}
+
+@mixin section-width() {
+  max-width: 1600px;
+  margin-left: auto;
+  margin-right: auto;
+}

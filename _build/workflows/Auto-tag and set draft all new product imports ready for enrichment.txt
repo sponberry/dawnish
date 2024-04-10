@@ -1,0 +1,154 @@
+shopify/products/create
+shopify/products/update
+mechanic/user/trigger
+
+{% comment %}
+  {{ options.live_product_tag__required }}
+  {{ options.draft_product_tag__required }}
+{% endcomment %}
+
+{% assign products = array %}
+
+{% if event.topic contains "shopify/products/" %}
+  {% if event.preview %}
+    {% capture product_json %}
+      {
+        "admin_graphql_api_id": "gid://shopify/Product/1234567890",
+        "tags": "",
+        "status": "active"
+      }
+    {% endcapture %}
+
+    {% assign product = product_json | parse_json %}
+  {% endif %}
+
+  {% assign product_node = hash %}
+  {% assign product_node["id"] = product.admin_graphql_api_id %}
+  {% assign product_node["tags"] = product.tags | split: ", " %}
+  {% assign products[0] = product_node %}
+{% elsif event.topic == "mechanic/user/trigger" %}
+  {% assign cursor = nil %}
+  {% assign total_inventory = 0 %}
+
+  {% for n in (0..100) %}
+    {% capture query %}
+      query {
+        products(
+          first: 250
+          after: {{ cursor | json }}
+        ) {
+          pageInfo {
+            hasNextPage
+          }
+          edges {
+            cursor
+            node {
+              id
+              tags
+            }
+          }
+        }
+      }
+    {% endcapture %}
+
+    {% assign result = query | shopify %}
+
+    {% if event.preview %}
+      {% capture result_json %}
+        {
+          "data": {
+            "products": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "gid://shopify/Product/4354268561469",
+                    "tags": "",
+                    "status": "active"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      {% endcapture %}
+
+      {% assign result = result_json | parse_json %}
+    {% endif %}
+
+    {% for product_edge in result.data.products.edges %}
+      {% assign product_node = product_edge.node %}
+      {% assign products[products.size] = product_node %}
+    {% endfor %}
+
+    {% if result.data.products.pageInfo.hasNextPage %}
+      {% assign cursor = result.data.products.edges.last.cursor %}
+    {% else %}
+      {% break %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+
+{% for product in products %}
+  {% assign tags_to_add = array %}
+  {% assign tags_to_remove = array %}
+  {% assign make_draft = false %}
+
+  {% if product.status == ProductStatus.ACTIVE %}
+    {% assign live_tag = options.live_product_tag__required | strip %}
+    {% assign draft_tag = options.draft_product_tag__required | strip %}
+
+    {% if event.topic == "shopify/products/create" %}
+      {% unless product.tags contains live_tag %}
+        {% assign make_draft = true %}
+        {% assign tags_to_add[tags_to_add.size] = draft_tag %}
+      {% endunless %}
+    {% elsif event.topic == "shopify/products/update" %}
+      {% if product.tags contains draft_tag %}
+        {% assign tags_to_remove[tags_to_remove.size] = draft_tag %}
+      {% endif %}
+    {% endif %}
+
+  {% endif %}
+
+  {% if tags_to_add != empty or tags_to_remove != empty %}
+    {% log product: product, tags_to_add: tags_to_add, tags_to_remove: tags_to_remove, make_draft: make_draft %}
+
+    {% action "shopify" %}
+      mutation {
+        {% if tags_to_add != empty %}
+          tagsAdd(
+            id: {{ product.id | json }}
+            tags: {{ tags_to_add | json }}
+          ) {
+            userErrors {
+              field
+              message
+            }
+          }
+        {% endif %}
+        {% if tags_to_remove != empty %}
+          tagsRemove(
+            id: {{ product.id | json }}
+            tags: {{ tags_to_remove | json }}
+          ) {
+            userErrors {
+              field
+              message
+            }
+          }
+        {% endif %}
+        {% if make_draft %}
+          productChangeStatus(
+            productId: {{ product.id | json }},
+            status: DRAFT
+          ) {
+            userErrors {
+              field
+              message
+            }
+          }
+        {% endif %}
+      }
+    {% endaction %}
+  {% endif %}
+{% endfor %}

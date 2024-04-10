@@ -1,0 +1,498 @@
+shopify/products/create
+mechanic/user/trigger
+mechanic/user/product
+
+
+{% comment %}
+  {{ options.single_pack_type__required }}
+  {{ options.twin_pack_type__required }}
+  {{ options.triple_pack_type__required }}
+  {{ options.phantom_product_tag__required }}
+  {{ options.created_tag_prefix__required }}
+  {{ options.draft_product_tag__required }}
+  {{ options.twin_pack_percent_discount__number_required }}
+  {{ options.triple_pack_percent_discount__number_required }}
+  {{ options.specific_fit_rear_style__required }}
+  {{ options.first_alternate_brand__required }}
+  {{ options.second_alternate_brand__required }}
+  {{ options.included_products_tag_prefix__required }}
+{% endcomment %}
+
+{% assign phantom_tag = options.draft_product_tag__required | strip %}
+{% assign review_tag = options.phantom_product_tag__required | strip %}
+{% assign singlePackType = options.single_pack_type__required | downcase %}
+{% assign twinPackType = options.twin_pack_type__required | downcase %}
+{% assign triplePackType = options.triple_pack_type__required | downcase %}
+{% assign specificFitStyle = options.specific_fit_rear_style__required | downcase %}
+{% assign altBrand = options.first_alternate_brand__required | downcase %}
+{% assign altBrandTwo = options.second_alternate_brand__required | downcase %}
+
+{% assign tripleHandleSuffix = '-triple-pack-wiper-blades'%}
+{% assign twinHandleSuffix = '-twin-pack-wiper-blades' %}
+
+{% assign newProducts = array %}
+{% if event.topic == "mechanic/user/trigger" %}
+  {% assign cursor = nil %}
+
+  {% for n in (0..100) %}
+    {% capture query %}
+      query {
+        products(
+          first: 250
+          after: {{ cursor | json }}
+        ) {
+          pageInfo {
+            hasNextPage
+          }
+          edges {
+            cursor
+            node {
+              id
+              handle
+              title
+              body_html
+              images(first: 10) {
+                edges {
+                  node {
+                    altText
+                    height
+                    width
+                    id
+                    url
+                  }
+                }
+              }
+              vendor
+              pack_type: metafield(
+                namespace: "custom"
+                key: "pack_type"
+              ) {
+                type
+                value
+              }
+              brand: metafield(
+                namespace: "custom"
+                key: "brand"
+              ) {
+                type
+                value
+              }
+              range: metafield(
+                namespace: "custom"
+                key: "range"
+              ) {
+                type
+                value
+              }
+              match_string: metafield(
+                namespace: "custom"
+                key: "match_string"
+              ) {
+                type
+                value
+              }
+            }
+          }
+        }
+      }
+    {% endcapture %}
+
+    {% assign result = query | shopify %}
+
+    {% assign products_result = result.data.products.edges | map: "node" | where: "vendor" %}
+    {% assign newProducts = newProducts | concat: products_result %}
+
+    {% if result.data.products.pageInfo.hasNextPage %}
+      {% assign cursor = result.data.products.edges.last.cursor %}
+    {% else %}
+      {% break %}
+    {% endif %}
+  {% endfor %}
+{% elsif event.topic == "shopify/products/create" or event.topic == "mechanic/user/product" %}
+  {% assign newProducts[0] = event.data %}
+{% endif %}
+
+{% for newProduct in newProducts %}
+  {% if newProduct.admin_graphql_api_id %}
+    {% assign admin_graphql_api_id = newProduct.admin_graphql_api_id %}
+  {% else %}
+    {% assign admin_graphql_api_id = newProduct.id %}
+  {% endif %}
+  {% capture newProdQuery %}
+    query {
+      product(id:"{{ admin_graphql_api_id }}") {
+        id
+        pack_type: metafield(
+          namespace: "custom"
+          key: "pack_type"
+        ) {
+          type
+          value
+        }
+        brand: metafield(
+          namespace: "custom"
+          key: "brand"
+        ) {
+          type
+          value
+        }
+        range: metafield(
+          namespace: "custom"
+          key: "range"
+        ) {
+          type
+          value
+        }
+        match_string: metafield(
+          namespace: "custom"
+          key: "match_string"
+        ) {
+          type
+          value
+        }
+        style: metafield(
+          namespace: "custom"
+          key: "style"
+        ) {
+          type
+          value
+        }
+      }
+    }
+    
+  {% endcapture %}
+  {% assign newProdResult = newProdQuery | shopify %}
+  {% liquid 
+    assign newProductPackType = newProdResult.data.product["pack_type"].value | downcase
+    assign newProductMatchString = newProdResult.data.product["match_string"].value
+    assign newProductBrand = newProdResult.data.product["brand"].value | downcase
+    assign newProductRange = newProdResult.data.product["range"].value | downcase
+    assign newProductStyle = newProdResult.data.product["style"].value | downcase
+  %}
+
+  {% assign matchingProducts = array %}
+  {% assign allProductHandles = array %}
+
+{% unless newProductPackType == triplePackType %}
+  {% for product in shop.products %}
+    {% assign downcasedProductHandle = product.handle | downcase %}
+    {% assign allProductHandles = allProductHandles | push: downcasedProductHandle %}
+
+    {% capture prodQuery %}
+      query {
+        product(id:"{{ product.admin_graphql_api_id }}") {
+          id
+          pack_type: metafield(
+            namespace: "custom"
+            key: "pack_type"
+          ) {
+            type
+            value
+          }
+          brand: metafield(
+            namespace: "custom"
+            key: "brand"
+          ) {
+            type
+            value
+          }
+          range: metafield(
+            namespace: "custom"
+            key: "range"
+          ) {
+            type
+            value
+          }
+          products_included: metafield(
+            namespace: "custom"
+            key: "products_included"
+          ) {
+            type
+            value
+          }
+          match_string: metafield(
+            namespace: "custom"
+            key: "match_string"
+          ) {
+            type
+            value
+          }
+          style: metafield(
+            namespace: "custom"
+            key: "style"
+          ) {
+            type
+            value
+          }
+        }
+      }
+    {% endcapture %}
+    {% assign prodResult = prodQuery | shopify %}
+    {% liquid 
+        assign productPackType = prodResult.data.product["pack_type"].value | downcase
+        assign productBrand = prodResult.data.product["brand"].value | downcase
+        assign productRange = prodResult.data.product["range"].value | downcase
+        assign productStyle = prodResult.data.product["style"].value | downcase
+
+        assign productToPush = array
+        assign productToPush[0] = product
+        assign productToPush[1] = prodResult.data.product
+        assign productToPush[2] = hash
+    %}
+    {% if newProductPackType == singlePackType and newProductMatchString.size > 0 %}
+      {% unless newProduct.tags contains phantom_tag %}
+        
+          {% comment %}Single to single twin pack pairing.{% endcomment %}
+          {% if productPackType == singlePackType and productBrand == newProductBrand and productRange == newProductRange %}
+            {% assign productToPush[2]["titleSuffix"] = options.twin_pack_type__required %}
+            {% assign productToPush[2]["handleSuffix"] = twinHandleSuffix %}
+            {% assign productToPush[2]["price_multiplier"] = options.twin_pack_percent_discount__number_required | minus: 1 | times: -1 %}
+
+            {% assign matchingProducts = matchingProducts | push: productToPush %}
+          {% endif %}
+
+          {% comment %}Single to twin triple pack creation.{% endcomment %}
+          {% if productPackType == twinPackType %}
+            {% assign productToPush[2]["titleSuffix"] = options.triple_pack_type__required %}
+            {% assign productToPush[2]["handleSuffix"] = tripleHandleSuffix %}
+            {% assign productToPush[2]["price_multiplier"] = options.triple_pack_percent_discount__number_required | minus: 1 | times: -1 %}
+            {% if productBrand == newProductBrand and productRange == newProductRange %}
+              {% log "product brand and range match", product.title %}
+              {% assign matchingProducts = matchingProducts | push: productToPush %}
+            {% elsif productBrand == newProductBrand and newProductStyle == specificFitStyle %}
+              {% assign matchingProducts = matchingProducts | push: productToPush %}
+            {% elsif newProductBrand == altBrand and newProductStyle == specificFitStyle %}
+              {% assign matchingProducts = matchingProducts | push: productToPush %}
+            {% elsif newProductBrand == altBrandTwo and newProductStyle == specificFitStyle %}
+              {% assign matchingProducts = matchingProducts | push: productToPush %}
+            {% endif %}
+          {% endif %}
+
+        
+      {% endunless %}
+
+    {% elsif newProductPackType == twinPackType %}
+      {% comment %}Twin to single triple pack creation.{% endcomment %}
+      {% assign productToPush[2]["titleSuffix"] = options.triple_pack_type__required %}
+      {% assign productToPush[2]["handleSuffix"] = tripleHandleSuffix %}
+      {% assign productToPush[2]["price_multiplier"] = options.triple_pack_percent_discount__number_required | minus: 1 | times: -1 %}
+      {% if productPackType == singlePackType %}
+        {% if productBrand == newProductBrand and productRange == newProductRange %}
+          {% log "product brand and range match", product.title %}
+          {% assign matchingProducts = matchingProducts | push: productToPush %}
+        {% elsif productBrand == newProductBrand and productStyle == specificFitStyle %}
+          {% assign matchingProducts = matchingProducts | push: productToPush %}
+        {% elsif productBrand == altBrand and productStyle == specificFitStyle %}
+          {% assign matchingProducts = matchingProducts | push: productToPush %}
+        {% elsif productBrand == altBrandTwo and productStyle == specificFitStyle %}
+          {% assign matchingProducts = matchingProducts | push: productToPush %}
+        {% endif %}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+{% endunless %}
+
+{% assign matchingProductsCount = matchingProducts | size %}
+
+{% if matchingProductsCount > 0 %}
+  {% assign textOut = "Found " | append: matchingProductsCount | append: " matching products to twin." %}
+  {% log textOut, matchingProducts %}
+  
+  {% assign timestamp = "now" | date: "%Y/%m/%d %H:%M:%S%Z" %}
+  {% assign created_tag = options.created_tag_prefix__required | strip | append: ':' | append: timestamp %}
+  {% if newProductPackType == singlePackType and matchingProduct[1]["pack_type"] == singlePackType -%}
+    {% assign includes_tag = options.included_products_tag_prefix__required | append: matchingProduct[0].admin_graphql_api_id | append: '|' | append: newProduct.admin_graphql_api_id %}
+  {%- else -%}
+  {% assign firstIncluded = productsIncluded | first %}
+  {% assign secondIncluded = productsIncluded | last %}
+  {% assign includes_tag = options.included_products_tag_prefix__required | append: newProduct.admin_graphql_api_id | append: '|' | append: firstIncluded | append: "|" | append: secondIncluded %}
+  {%- endif %}
+
+  {% if event.topic == "shopify/products/create" or event.topic == "mechanic/user/product" %}
+    {% for matchingProduct in matchingProducts %}
+
+        {% assign duplicate_product_id = '' %}
+        {% if matchingProduct[0].id == newProduct.id %}
+          {% comment %}
+            we have matched same product to same product (which is valid), but ungrouping this in cart/checkout is problematic
+            add id to duplicate_product_included metafield to assist cart/checkout behaviour
+          {% endcomment %}
+          {% assign duplicate_product_id = matchingProduct[0].variants[0].id %}
+        {% elsif newProductPackType == twinPackType and matchingProduct[1]["duplicate_product_included"] %}
+          {% assign duplicate_product_id = matchingProduct[1]["duplicate_product_included"].value %}
+        {% endif %}
+
+      {% liquid
+        assign smushArray = array
+        assign prodMatchStringArray = array
+        assign prodMatchStringArray = newProdResult.data.product["match_string"].value | split: ","
+        assign pairedProdMatchStringArray = array
+        assign pairedProdMatchStringArray = matchingProduct[1]["match_string"].value | split: '","'
+
+        for matchString in prodMatchStringArray
+          for pairedMatchString in pairedProdMatchStringArray
+            assign correctedProdPart = matchString | replace: '[', '' | replace: "]", "," | replace: ",", "" | replace: '"""', "" | replace: '""', "" | replace: '\', '' | remove_first: '"' | remove_last: '"'
+            assign correctedPairedPart = pairedMatchString | replace: '[', '' | replace: "]", "," | replace: ",", "" | replace: '"""', "" | replace: '""', "" | replace: '\', '' | remove_first: '"' | remove_last: '"'
+
+            for i in (10..29)
+              assign numberString = i | append: " "
+              assign inchString = i | append: '"' | append: " "
+              assign first_chars = correctedProdPart | slice: 0, 3
+              if first_chars contains numberString
+                assign correctedProdPart = correctedProdPart | replace: numberString, inchString
+              endif
+              assign paired_first_chars = correctedPairedPart | slice: 0, 3
+              if paired_first_chars contains numberString
+                assign correctedPairedPart = correctedPairedPart | replace: numberString, inchString
+              endif
+            endfor
+            assign tempArray = array
+            if newProdResult.data.product["pack_type"] == twinPackType
+              assign tempArray = array | push: correctedProdPart, correctedPairedPart
+            elsif matchingProduct[1]["pack_type"] == twinPackType
+              assign tempArray = array | push: correctedPairedPart, correctedProdPart
+            else
+              assign tempArray = array | push: correctedProdPart, correctedPairedPart | sort_natural
+            endif
+            assign newMatchString = tempArray | join: " " 
+            assign smushArray = smushArray | push: newMatchString
+          endfor
+        endfor
+
+        for newMatchString in smushArray
+          assign correctedString = newMatchString | replace: '[', '' | replace: "]", "," | replace: ",", ""
+          assign smushArray[smushArray.size] = correctedString
+        endfor
+        
+        assign smushArrayString = smushArray| sort_natural | uniq | json
+
+        log prodMatchStringArray, pairedProdMatchStringArray, tempArray, smushArray, smushArrayString
+      %}
+
+
+      {% liquid
+        assign handleArray = array
+        assign newProductPart = newProduct.handle | append: '-' | append: newProduct.variants[0].sku
+        assign matchedProductPart = matchingProduct[0].handle | append: '-' | append: matchingProduct[0].variants[0].sku
+        assign handleArray = handleArray | push: newProductPart, matchedProductPart
+        assign handleArray = handleArray | sort_natural
+
+        if matchingProduct[2]["handleSuffix"] == tripleHandleSuffix
+          assign newPhantomHandle = handleArray | join: '-and-' | replace: twinHandleSuffix, "" | append: matchingProduct[2]["handleSuffix"] | downcase
+          assign titleString = matchingProduct[0].title | append: ' and ' | append: newProduct.title | append: " " | append: matchingProduct[2]["titleSuffix"]  | replace: '"', '\"' | replace: options.twin_pack_type__required, ""
+        else
+          assign newPhantomHandle = handleArray | join: '-and-' | append: matchingProduct[2]["handleSuffix"] | downcase
+          assign titleString = matchingProduct[0].title | append: ' and ' | append: newProduct.title | append: " " | append: matchingProduct[2]["titleSuffix"]  | replace: '"', '\"'
+        endif
+      %}
+      
+      {% liquid 
+        if matchingProduct[1]["products_included"].size > 6
+          assign productsIncluded = matchingProduct[1]["products_included"] | replace: '[', '' | replace: ']', '' | split: ','
+        else
+          assign productsIncluded = array
+          assign productsIncluded[0] = matchingProduct[0].admin_graphql_api_id
+        endif
+        assign imageArray = matchingProduct[0].images | concat: newProduct.images
+        assign productPrice = matchingProduct[0].variants[0].price | plus: newProduct.variants[0].price
+        unless matchingProduct[2]["titleSuffix"] == options.twin_pack_type__required
+          assign tripleBodyHtml = '<h2>' | append: matchingProduct[0].title | append: "</h2>" | append: matchingProduct[0].body_html | append: "<h2>" | append: newProduct.title | append: "</h2>" | append: newProduct.body_html
+        endunless
+      %}
+
+      {% assign phantomAlreadyExists = false %}
+      {% for handle in allProductHandles %}
+        {% if handle == newPhantomHandle %}
+          {% assign phantomAlreadyExists = true %}
+        {% endif %}
+      {% endfor %}
+      {% unless phantomAlreadyExists %}
+        {% action "shopify" %}
+          mutation {
+            productCreate(input: {
+              descriptionHtml: {%- if matchingProduct[2]["titleSuffix"] == options.twin_pack_type__required -%}{{ newProduct.body_html | strip_newlines | json | replace: "(", " - " | replace: ")", "" }}{%- else -%}{{ tripleBodyHtml | strip_newlines | json | replace: "(", " - " | replace: ")", "" }}{%- endif -%},
+              handle: {{ newPhantomHandle | json }},
+              metafields: [
+                {
+                  key: "brand",
+                  namespace: "custom",
+                  type: "single_line_text_field",
+                  value: "{{ matchingProduct[1]["brand"].value }}"
+                },
+                {
+                  key: "range",
+                  namespace: "custom",
+                  type: "single_line_text_field",
+                  value: "{% if newProductPackType == twinPackType %}{{ newProdResult.data.product["range"].value }}{% else %}{{ matchingProduct[1]["range"].value }}{% endif %}"
+                },
+                {
+                  key: "pack_type",
+                  namespace: "custom",
+                  type: "single_line_text_field",
+                  value: "{{ matchingProduct[2]["titleSuffix"] }}"
+                },
+                {
+                  key: "duplicate_product_included",
+                  namespace: "custom",
+                  type: "single_line_text_field",
+                  value: "{{ duplicate_product_id }}"
+                },
+                {
+                  key: "products_included",
+                  namespace: "custom",
+                  type: "list.product_reference",
+                  {% if newProductPackType == singlePackType and matchingProduct[1]["pack_type"] == singlePackType -%}
+                    value: "[\"{{ matchingProduct[0].admin_graphql_api_id }}\", \"{{ newProduct.admin_graphql_api_id }}\"]"
+                  {%- elsif newProductPackType == singlePackType and matchingProduct[1]["pack_type"] == twinPackType -%}
+                    value: "[\"{{ newProduct.admin_graphql_api_id }}\", \"{{ productsIncluded | first }}\"{% if productsIncluded.size > 1 %} , \"{{ productsIncluded | last }}\"{% endif %}]"
+                  {% else %}
+                    value: "[\"{{ newProduct.admin_graphql_api_id }}\", \"{{ productsIncluded | first }}\"{% if productsIncluded.size > 1 %} , \"{{ productsIncluded | last }}\"{% endif %}]"
+                  {%- endif %}
+                },
+                {
+                  key: "match_string",
+                  namespace: "custom",
+                  type: "list.single_line_text_field",
+                  value: {{ smushArrayString | json }}
+                }
+              ],
+              productType: "{{ matchingProduct[0].productType }}",
+              published: true,
+              status: ACTIVE,
+              tags: ["{{ phantom_tag }}", "{{ created_tag }}", "{{ review_tag }}", "{{ includes_tag }}"],
+              title: "{{ titleString  }}",
+              vendor: "{{ matchingProduct[0].vendor }}",
+              variants: [
+                {
+                  price: "{{ productPrice | times: matchingProduct[2]["price_multiplier"] }}",
+                  compareAtPrice: "{{ productPrice }}"
+                }
+              ]
+            }, media: [
+              {% for image in imageArray -%}
+                {
+                  alt: {{ image.alt | default: '' | json }},
+                  mediaContentType: IMAGE,
+                  originalSource: "{{ image.src | default: image.url }}"
+                }{%- unless forloop.last -%},{%- endunless -%}
+              {%- endfor %}
+            ]) {
+              product {
+                id
+                title
+                handle
+              }
+              userErrors {
+                field
+                message
+              }
+            }
+          }
+        {% endaction %}
+      {% endunless %}
+      {% endfor %}
+    {% endif %}
+  {% else %}
+    {% log note: "No matching products found to combine." %}
+  {% endif %}
+{% endfor %}

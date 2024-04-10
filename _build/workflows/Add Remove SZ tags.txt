@@ -1,0 +1,243 @@
+shopify/inventory_levels/update
+mechanic/user/trigger
+mechanic/shopify/bulk_operation
+
+{% assign variants = array %}
+{% assign tag_prefix = options.product_tag__required %}
+{% assign tops_tag = options.tops_tag__required %}
+
+{% if event.topic == "shopify/inventory_levels/update" %}
+  {% capture query %}
+    query {
+      inventoryLevel(id: {{ inventory_level.admin_graphql_api_id | json }}) {
+        item {
+          variant {
+            id
+            title
+            availableForSale
+            sellableOnlineQuantity
+            selectedOptions {
+              name
+              value
+            }
+            product {
+              id
+              productType
+              vendor
+              tags
+            }
+          }
+        }
+      }
+    }
+  {% endcapture %}
+
+  {% assign result = query | shopify %}
+
+  {% assign variants[0] = result.data.inventoryLevel.item.variant %}
+  {% assign product_id = result.data.inventoryLevel.item.variant.product.id %}
+  {% assign product_type = result.data.inventoryLevel.item.variant.product.productType %}
+  {% assign product_vendor = result.data.inventoryLevel.item.variant.product.vendor %}
+
+{% elsif event.topic == "mechanic/user/trigger" %}
+  {% capture bulk_operation_query %}
+    query {
+      productVariants {
+        edges {
+          node {
+            id
+            title
+            availableForSale
+            sellableOnlineQuantity
+            selectedOptions {
+              name
+              value
+            }
+            product {
+              id
+              productType
+              vendor
+              tags
+            }
+          }
+        }
+      }
+    }
+  {% endcapture %}
+
+  {% action "shopify" %}
+    mutation {
+      bulkOperationRunQuery(
+        query: {{ bulk_operation_query | json }}
+      ) {
+        bulkOperation {
+          id
+          status
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+  {% endaction %}
+
+{% elsif event.topic == "mechanic/shopify/bulk_operation" %}
+  {% assign variants = bulkOperation.objects %}
+{% endif %}
+
+{% if event.preview %}
+  {% capture variants_json %}
+    [
+      {
+        "id": "gid://shopify/ProductVariant/1234567890",
+        "title": "Large",
+        "availableForSale": true,
+        "sellableOnlineQuantity": 10,
+        "selectedOptions": [
+          {
+            "name": "Size",
+            "value": "Large"
+          }
+        ],
+        "product": {
+          "id": "gid://shopify/Product/1234567890",
+          "productType": "bra",
+          "vendor": "BrandA",
+          "tags": ["test", "test2"]
+        }
+      }
+    ]
+  {% endcapture %}
+
+  {% assign variants = variants_json | parse_json %}
+  {% assign product_id = variants[0].product.id %}
+{% endif %}
+
+{% assign brief_types_array = options.brief_types__array_required %}
+{% assign exempt_vendors_array = options.exempt_vendors_for_size_synonyms__array | default: array %}
+{% assign briefs_size_synonyms = options.standard_briefs_size_synonyms__keyval | default: keyval %}
+
+{% assign tags_to_add = array %}
+
+{% for variant in variants %}
+  {% assign is_in_stock = nil %}
+
+  {% if variant.availableForSale %}
+    {% if variant.sellableOnlineQuantity > 0 %}
+      {% assign is_in_stock = true %}
+    {% endif %}
+  {% endif %}
+
+
+  {% assign product_tags = variant.product.tags %}
+
+  {% if variant.title contains '/' %}
+    {% assign iteration = "forward slash split"%}
+    {% assign size_parts = variant.title | replace: ' ', '' | split: '/' %}
+    {% unless exempt_vendors_array contains product_vendor %}
+      {% assign allowed_vendor = true %}
+    {% endunless %}
+    
+    {% if size_parts[0].size < 3 and allowed_vendor == true %}
+      {%comment%}Assume product is briefs{%endcomment%}
+      {% assign lookup_one = size_parts[0] %}
+      {% assign size_integer_one = size_parts[0] | plus: 0 %}
+      
+      {% if size_parts[0].size == 1 and size_integer_one > 8 or size_integer_one == 0 %}
+        {% assign size_tag_1 = tag_prefix | append: size_parts[0]  | append: ' / ' | append: briefs_size_synonyms[lookup_one] %}
+      {% else %}
+        {% assign size_tag_1 = tag_prefix | append: briefs_size_synonyms[lookup_one] | append: ' / ' | append: size_parts[0] %}
+      {% endif %}
+      {% assign lookup_two = size_parts[1] %}
+      {% assign size_integer_two = size_parts[1] | plus: 0 %}
+      {% if size_parts[1].size == 1 and size_integer_two > 8 or size_integer_two == 0 %}
+        {% assign size_tag_2 = tag_prefix | append: size_parts[1]  | append: ' / ' | append: briefs_size_synonyms[lookup_two] %}
+      {% else %}
+        {% assign size_tag_2 = tag_prefix | append: briefs_size_synonyms[lookup_two] | append: ' / ' | append: size_parts[1] %}
+      {% endif %}
+      {% assign tags_to_add[0] = size_tag_1 %}
+      {% assign tags_to_add[1] = size_tag_2 %}
+    {% else %}
+      {% assign size_tag_1 = tag_prefix | append: size_parts[0] %}
+      {% assign tag_prepend = size_parts[0] | slice: 0, 2 %}
+      {% assign size_tag_2 = tag_prefix | append: tag_prepend | append: size_parts[1] %}
+      {% assign tags_to_add[0] = size_tag_1 %}
+      {% assign tags_to_add[1] = size_tag_2 %}
+    {% endif %}
+  {% elsif product_vendor == 'Scantilly' and brief_types_array contains product_type %}
+    {% assign iteration = "scantilly briefs" %}
+    {% assign briefs_size_synonyms = options.scantilly_briefs_size_synonyms__keyval | default: keyval %}
+
+    {% assign size_tag = tag_prefix | append: variant.title %}
+    {% assign lookup = variant.title%}
+    {% assign size_tags = briefs_size_synonyms[lookup] %}
+    {% if size_tags == nil %}
+      {% assign tags_to_add[0] = size_tag %}
+    {% else %}
+      {% assign tags_to_add = size_tags | split: ', ' | sort %} 
+    {% endif %}
+  {% elsif product_tags contains tops_tag %}
+    {% assign iteration = "tops" %}
+    {% assign tops_size_synonyms = options.tops_size_synonyms__keyval | default: keyval %}
+
+    {% assign size_tag = tag_prefix | append: variant.title %}
+    {% assign lookup = variant.title%}
+    {% assign size_tags = tops_size_synonyms[lookup] %}
+    {% if size_tags == nil %}
+      {% assign tags_to_add[0] = size_tag %}
+    {% else %}
+      {% assign tags_to_add = size_tags | split: ', ' | sort %} 
+    {% endif %}
+  {% else %}
+    {% assign iteration = "single size tag"%}
+    {% assign size_tag = tag_prefix | append: variant.title %}
+    
+    {% if brief_types_array contains product_type %}
+      {% unless exempt_vendors_array contains product_vendor %}
+
+        {% if variant.title.size == 1 or variant.title contains 'XS' or variant.title contains 'XL'%}
+          {% assign size_tag = tag_prefix | append: variant.title  | append: ' / ' | append: briefs_size_synonyms[variant.title] %}
+        {% else %}
+          {% assign size_tag = tag_prefix | append: briefs_size_synonyms[variant.title] | append: ' / ' | append: variant.title %}
+        {% endif %}
+      {% endunless %}
+    {% endif %}
+
+    {% assign tags_to_add[0] = size_tag %}  
+  {% endif %}
+
+  {% if is_in_stock %}
+    {% action "shopify" %}
+      mutation {
+        tagsAdd(
+          id: {{ product_id | json }}
+          tags: {{ tags_to_add | json }}
+        ) {
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    {% endaction %}
+  {% else %}
+    {% action "shopify" %}
+      mutation {
+        tagsRemove(
+          id: {{ product_id | json }}
+          tags: {{ tags_to_add | json }}
+        ) {
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    {% endaction %}
+  {% endif %}
+{% endfor %}
+
+{% log
+  iteration
+%}

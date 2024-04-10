@@ -1,0 +1,358 @@
+{%- liquid
+  assign template_name = 'snippet-collection-filters'
+
+  comment
+    creates current url so each filter link can add to it
+  endcomment
+
+  if collection
+    assign current_url = results.url | append: '?'
+    assign initial_url = results.url
+  else
+    assign search_types = results.types | join: '%2C'
+    assign search_terms = results.terms | split: ' ' | join: '+'
+    assign current_url = routes.search_url | append: '?' | append: 'type=' | append: search_types | append: '&q=' | append: search_terms | append: '&'
+    assign initial_url = routes.search_url | append: '?' | append: 'type=' | append: search_types | append: '&q=' | append: search_terms
+  endif
+  assign active_filters_exist = false
+
+  assign pack_type_url = current_url
+  for filter in results.filters
+    if filter.active_values.size > 0
+      for active_value in filter.active_values
+        assign url_sections_array = current_url | split: '?'
+
+        capture apos_escaped_filter_value
+          render 'apostrophe-escape', string: active_value.value
+        endcapture
+        capture amp_escaped_filter_value
+          render 'ampersand-escape', string: apos_escaped_filter_value
+        endcapture
+        assign escaped_active_value = amp_escaped_filter_value | url_encode | replace: '%26%2339%3B', '%27'
+        assign current_url = current_url | append: active_value.param_name | append: '=' | append: escaped_active_value | append: '&'
+        unless active_value.param_name contains 'pack_type'
+          assign pack_type_url = pack_type_url | append: active_value.param_name | append: '=' | append: escaped_active_value | append: '&'
+        endunless
+      endfor
+
+      assign active_filters_exist = true
+    endif
+    if filter.type == 'price_range'
+      if filter.min_value.value != null or filter.max_value.value != null
+        if filter.min_value.value != null
+          assign min_value = filter.min_value.value | money_without_currency | replace: ',', ''
+          assign current_url = current_url | append: filter.min_value.param_name | append: '=' | append: min_value | append: '&'
+          assign pack_type_url = pack_type_url | append: filter.min_value.param_name | append: '=' | append: min_value | append: '&'
+        endif
+        if filter.max_value.value != null
+          assign max_value = filter.max_value.value | money_without_currency | replace: ',', ''
+          assign current_url = current_url | append: filter.max_value.param_name | append: '=' | append: max_value | append: '&'
+          assign pack_type_url = pack_type_url | append: filter.max_value.param_name | append: '=' | append: max_value | append: '&'
+        endif
+        assign active_filters_exist = true
+      endif
+    endif
+  endfor
+
+  comment
+    allow and disallow list setup
+  endcomment
+
+  if collection
+    assign user_allowed_filter_categories = shop.metafields.filters.allow_list | append: ',' | append: collection.metafields.filters.allow_list
+    assign user_disallowed_filter_categories = shop.metafields.filters.disallow_list | append: ',' | append: collection.metafields.filters.disallow_list
+    assign user_allowed_filter_categories_array = user_allowed_filter_categories | split: ',' | uniq
+    assign user_disallowed_filter_categories_array = user_disallowed_filter_categories | split: ',' | uniq
+
+    for disallowed_filter_category in user_disallowed_filter_categories_array
+      assign disallowed_filter = disallowed_filter_category | downcase | strip
+
+      unless user_allowed_filter_categories_array contains disallowed_filter_category
+        assign disallowed_filter_categories = disallowed_filter_categories | append: ',' | append: disallowed_filter
+      endunless
+    endfor
+
+    assign disallowed_filter_categories = disallowed_filter_categories | append: 'match-string,' | append: 'codes'
+    assign disallowed_filter_categories_array = disallowed_filter_categories | split: ',' | uniq
+  endif
+
+  assign no_index_filters = settings.no_index_filters | split: ','
+  assign always_index_filters = settings.always_index_filters | split:  ','
+-%}
+
+{%- capture toggle_icons -%}
+  {%- render 'icon', _name: 'icon-chevron-down' -%}
+{%- endcapture -%}
+
+<div id="filter-buttons-mobile">
+  <button
+    class="filters-open c-btn main tertiary has-icon fw"
+    type="button"
+    aria-controls="{{- template.name -}}-filters"
+    aria-expanded="false"
+    data-{{- template.name -}}-filters-open
+  >
+    {{ 'template.collection.filters' | t }}
+    {%- render 'icon', _name: 'icon-filters' -%}
+    <span class="sr-only">
+      {{ paginate.items }}
+      {{ 'template.collection.products' | t }}
+    </span>
+  </button>
+  {%- if _enable_sorting and results.sort_by -%}
+    {%- assign sort_by = results.sort_by | default: results.default_sort_by -%}
+        <div class="sort-by">
+          <span class="sort-by-title">Sort by</span>
+          <select class="form-input fw" id="collection-sort" name="sort_by" aria-label="{{- 'template.collection.sort_by' | t -}}" data-{{- template.name -}}-sort>
+            {%- for option in results.sort_options -%}
+              <option value="{{ option.value }}" {% if option.value == sort_by %}selected="selected"{% endif %}>
+                {{ option.name }}
+              </option>
+            {%- endfor -%}
+          </select>
+        </div>
+  {%- endif -%}
+</div>
+
+<div class="{{ template_name }}" data-{{- template.name -}}-filters>
+  <div id="collection-handle" hidden>
+    {% if collection %}{{ collection.handle }}{% else %}search{% endif %}
+  </div>
+  <div class="header">
+  <p class="sr-only">{{ _total_items }} {% if collection %}{{ 'template.collection.products' | t }}{% else %}{{ 'template.search.items' | t }}{% endif %}</p>
+    <button class="close-filters c-btn" type="button" data-{{- template.name -}}-filters-close>
+      <span class="sr-only">{{ 'template.collection.close_menu' | t }}</span>
+      {%- render 'icon', _name: 'icon-cross' -%}
+    </button>
+  </div>
+
+
+
+  <div class="body">
+    <form class="c-form" data-storefront-filter-form>
+      {%- if active_filters_exist -%}
+      <div class="active-filters-container">
+        {%- for filter in results.filters -%}
+          {%- for value in filter.active_values -%}
+            <a href="{{ value.url_to_remove }}" class="clear-link" data-clear-filter-link>
+              {%- render 'icon', _name: 'icon-cross' -%}
+              {{ filter.label }}: {{ value.label | replace: settings.tags_filter_prefix, '' | escape }}
+            </a>
+          {%- endfor -%}
+          {% if filter.type == 'price_range' %}
+            {%- if filter.min_value.value != null or filter.max_value.value != null -%}
+              <a href="{{ filter.url_to_remove }}" class="clear-link" data-clear-filter-link>
+                {%- render 'icon', _name: 'icon-cross' -%}
+                {%- if filter.min_value.value -%}{{ filter.min_value.value | money }}{%- else -%}{{ 0 | money }}{%- endif -%}
+                -
+                {%- if filter.max_value.value -%}{{ filter.max_value.value | money }}{%- else -%}{{ filter.range_max | money }}{%- endif -%}
+              </a>
+            {%- endif -%}
+          {% endif %}
+        {%- endfor -%}
+          <a
+            class="c-btn alt primary"
+            href="{{ initial_url }}"
+            data-clear-all-filters
+          >
+            {{ 'template.collection.clear' | t }}
+          </a>
+        </div>
+      {%- endif -%}
+      {%- for filter in results.filters -%}
+        {%- assign lowercase_filter_label = filter.label | downcase | handleize -%}
+        {%- if disallowed_filter_categories_array contains lowercase_filter_label -%}
+          {% continue %}
+        {%- endif -%}
+        {% assign lowercase_tags_filter_name = settings.tags_filter_name | downcase | handleize %}
+        {% assign offers_tags = null %}
+        {% if lowercase_filter_label == lowercase_tags_filter_name %}
+          {% assign offers_tags = false %}
+          {%- for filter_value in filter.values -%}
+            {% if filter_value.label contains settings.tags_filter_prefix %}
+              {% assign offers_tags = true %}
+              {% break %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+        {% if offers_tags != null and offers_tags == false %}
+          {% continue %}
+        {% endif %}
+        <div class="category" data-{{- template.name -}}-filters-category="{{ lowercase_filter_label }}">
+          <button class="c-btn toggle u-text-lg" id="collection-filters-category-toggle-{{ lowercase_filter_label }}" aria-controls="collection-filters-category-content-{{ lowercase_filter_label }}" aria-expanded="{% if filter.active_values.size > 0 %}true{% else %}false{% endif %}" type="button" data-{{- template.name -}}-filters-category-toggle>
+            <span>{{ filter.label }}</span>
+            {% if filter.active_values.size > 0 %}
+              <span class="active-filters">({{ filter.active_values.size }})</span>
+            {%- endif -%}
+            {{- toggle_icons -}}
+          </button>
+          <div class="content" id="collection-filters-category-content-{{ lowercase_filter_label -}}" aria-labelledby="collection-filters-category-toggle-{{ lowercase_filter_label }}" data-{{- template.name -}}-filters-category-content>
+            {%- assign filter_label_handle = filter.label | downcase | strip -%}
+            {%- case filter.type -%}
+              {%- when 'boolean', 'list' -%}
+                {% assign filter_value_length = 0 -%}
+                <ul role="menu" aria-label="{{ lowercase_filter_label -}}">
+                  {%- for filter_value in filter.values -%}
+                    {% if offers_tags != true %}
+                      {% assign filter_value_length = forloop.length -%}
+                    {% endif %}
+                    {% if lowercase_filter_label == lowercase_tags_filter_name %}
+                      {% unless filter_value.label contains settings.tags_filter_prefix %}
+                        {% continue %}
+                      {% endunless %}
+
+                      {% assign filter_value_length = filter_value_length | plus: 1 -%}
+                    {% endif %}
+                    {% if filter_value.active -%}
+                      {%- assign url_value = filter_value.url_to_remove -%}
+                      {%- assign full_url = true -%}
+                    {% elsif filter_value.count > 0 %}
+                      {% comment %}
+                        We can use this intead if we don't need the url building for seo overrides
+                        {%- assign url_value = filter_value.url_to_add -%}
+                      {% endcomment %}
+                      {%- assign full_url = false -%}
+                      {% capture apos_escaped_filter_value %}{% render 'apostrophe-escape', string: filter_value.value %}{% endcapture %}
+                      {% capture amp_escaped_filter_value %}{% render 'ampersand-escape', string: apos_escaped_filter_value %}{% endcapture %}
+
+                      {%- assign escaped_filter_value = amp_escaped_filter_value | url_encode -%}
+
+                      {% assign full_filter_param = filter_value.param_name | append: '=' | append: escaped_filter_value | replace: ' ', '%20' | replace: '%26quot%3B', '%22' %}
+                      {% if lowercase_filter_label == 'pack-type' %}
+                        {%- assign url_value = pack_type_url | append: full_filter_param -%}
+                      {% else %}
+                        {%- assign url_value = current_url | append: full_filter_param -%}
+                      {% endif %}
+                    {%- endif %}
+                    {% if results.sort_by.size > 0 and full_url == false %}
+                      {% if url_value contains '?' %}
+                        {% assign url_value = url_value | append: '&' %}
+                      {% else %}
+                        {% assign url_value = url_value | append: '?' %}
+                      {% endif %}
+                    {% endif %}
+                    {% capture filter_element %}
+                      <span class="text {% if filter_value.count == 0 and filter_value.active == false -%}is-disabled{%- endif %}" id="no-js-link-text"> {{ filter_value.label }} ({{ filter_value.count }}) </span>
+                      <input
+                        type="checkbox"
+                        class="form-input"
+                        name="{{ filter_value.param_name }}"
+                        value="{{ filter_value.value }}"
+                        id="Filter-{{ filter.param_name }}-{{ forloop.index }}"
+                        {% if filter_value.active -%}
+                          checked
+                        {%- endif %}
+                        {% if filter_value.count == 0 and filter_value.active == false -%}
+                          disabled
+                        {%- endif %}
+                        data-url="{{ url_value }}{%- if results.sort_by.size > 0 and full_url == false -%}sort_by={{ results.sort_by }}{%- endif -%}"
+                      >
+                      <label class="form-checkbox-label" for="Filter-{{ filter.param_name }}-{{ forloop.index }}">
+                        <span class="text {% if filter_value.count == 0 and filter_value.active == false -%}is-disabled{%- endif %}">
+                          {{ filter_value.label | split: '_' | last }}
+                          ({{ filter_value.count }})
+                        </span>
+                      </label>
+                    {% endcapture %}
+
+                    {%- if filter_value.count > 0 -%}
+                      <li role="none">
+                        <a href="{{ shop.url }}{{ url_value }}{%- if results.sort_by.size > 0 and full_url == false -%}sort_by={{ results.sort_by }}{%- endif -%}" class="" role="menuitem" {% unless always_index_filters contains full_filter_param %}{% if no_index_filters contains lowercase_filter_label %}rel="nofollow"{% endif %}{% endunless %}>
+                          {{ filter_element }}
+                        </a>
+                      </li>
+                    {% else %}
+                      {%- assign zero_value_filters = zero_value_filters | append: '<li role="none" class="zero-value">' | append: filter_element | append: '</li>' | append: '||' -%}
+                    {%- endif -%}
+                  {%- endfor -%}
+                  {%- assign zero_value_filters_array = zero_value_filters | split: '||' -%}
+                  {% for filter in zero_value_filters_array %}
+                    {{ filter }}
+                  {% endfor %}
+                  {% assign zero_value_filters = blank %}
+                  {% assign zero_value_filters_array = blank %}
+                </ul>
+                {%- if filter_value_length > 9 -%}
+                  <button class="c-btn content-toggle" data-filters-content-toggle="{{ lowercase_filter_label -}}">
+                    {%- render 'icon', _name: 'icon-plus', _class: 'plus' -%}
+                    {%- render 'icon', _name: 'icon-minus', _class: 'minus' -%}
+                    Show more
+                  </button>
+                {%- endif -%}
+              {%- when 'price_range' -%}
+                <div class="price-range">
+                  <div class="text-input">
+                    <div class="price-range-from">
+                      <span>{{ cart.currency.symbol }}</span>
+                      <input
+                        name="{{ filter.min_value.param_name }}"
+                        id="Filter-{{ filter.min_value.param_name }}"
+                        class="form-input"
+                        {% if filter.min_value.value -%}
+                          value="{{ filter.min_value.value | money_without_currency | replace: ',', '.' }}"
+                        {%- endif %}
+                        type="number"
+                        placeholder="0"
+                        min="0"
+                        max="{{ filter.range_max | money_without_currency | replace: ',', '.' }}"
+                        data-min-value-input
+                      >
+                      <label class="sr-only" for="Filter-{{ filter.min_value.param_name }}">From Minimum Price</label>
+                    </div>
+                    <div class="price-range-to">
+                      <span>{{ cart.currency.symbol }}</span>
+                      <input
+                        name="{{ filter.max_value.param_name }}"
+                        id="Filter-{{ filter.max_value.param_name }}"
+                        class="form-input"
+                        {% if filter.max_value.value -%}
+                          value="{{ filter.max_value.value | money_without_currency | replace: ',', '.' }}"
+                        {%- endif %}
+                        type="number"
+                        placeholder="{{ filter.range_max | money_without_currency }}"
+                        min="0"
+                        max="{{ filter.range_max | money_without_currency | replace: ',', '.' }}"
+
+                        data-max-value-input
+                      >
+                      <label class="sr-only" for="Filter-{{ filter.max_value.param_name }}">To Maximum Price</label>
+                    </div>
+                  </div>
+                  <div class="range-input">
+                    <input
+                      type="range"
+                      min="0"
+                      max="{{ filter.range_max | money_without_currency | replace: ',', '.' }}"
+                      id="minimum-price-slider"
+                      {% if filter.min_value.value -%}
+                        value="{{ filter.min_value.value | money_without_currency | replace: ',', '.' }}"
+                      {% else %}
+                        value="0"
+                      {%- endif %}
+                      step="0.1"
+                      data-price-range-slider="min"
+                    >
+                    <label class="sr-only" for="minimum-price-slider">Minimum Price Sliding Scale</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="{{ filter.range_max | money_without_currency | replace: ',', '.' }}"
+                      id="maximum-price-slider"
+                      {% if filter.max_value.value -%}
+                        value="{{ filter.max_value.value | money_without_currency | replace: ',', '.' }}"
+                      {% else %}
+                        value="{{ filter.range_max | money_without_currency | replace: ',', '.' }}"
+                      {%- endif %}
+                      step="0.1"
+                      data-price-range-slider="max"
+                    >
+                    <label class="sr-only" for="maximum-price-slider">Maximum Price Sliding Scale</label>
+                  </div>
+                </div>
+            {%- endcase -%}
+          </div>
+        </div>
+      {%- endfor -%}
+    </form>
+  </div>
+</div>

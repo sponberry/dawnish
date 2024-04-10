@@ -1,0 +1,72 @@
+{%- comment -%}
+  Returns image URL for VRM modal.
+{%- endcomment -%}
+{%- liquid
+  layout = none
+-%}
+
+{
+  "src": {{ collection.image.src | json }},
+  "alt": {{ collection.image.alt |  default: collection.title | json }}
+}
+
+{%- comment -%}
+  Returns product count by pack type.
+{%- endcomment -%}
+{%- liquid
+  layout = none
+-%}
+
+{%- paginate collection.products by 50 -%}
+  {%- for filter in collection.filters -%}
+  {%- assign lowercase_filter_label = filter.label | downcase | handleize -%}
+  {% if lowercase_filter_label == 'pack-type' %}
+    {%- for filter_value in filter.values -%}
+      {% assign filter_label = filter_value.label | downcase %}
+      {% unless filter_label == settings.twin_tab or filter_label == settings.triple_tab %}
+        {% continue %}
+      {% endunless %}
+      {% if filter_label == settings.twin_tab %}
+        {% assign twin_count = filter_value.count %}
+      {% elsif filter_label == settings.triple_tab %}
+        {% assign triple_count = filter_value.count %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{% endfor %}
+{
+  "twinCount": {{ twin_count | json }},
+  "tripleCount": {{ triple_count | json }}
+}
+{%- endpaginate -%}
+
+{%- comment -%}
+  Returns product count of a filtered collection.
+{%- endcomment -%}
+{%- liquid
+  layout = none
+-%}
+
+{% assign prod_count = 0 %}
+
+{%- paginate collection.products by 50 -%}
+  {% for prod in collection.products %}
+    {% assign prod_count = prod_count | plus: 1 %}
+  {% endfor %}
+{%- endpaginate -%}
+{
+  "productCount": {{ prod_count | json }}
+}
+
+{%- comment -%}
+  Returns product handles only to be checked for fit compatiblity against stored vehicle.
+{%- endcomment -%}
+{%- liquid
+  layout = none
+-%}
+
+{%- paginate collection.products by 50 -%}
+{
+  "products": {{ collection.products | uniq | map: 'handle' | json }}
+}
+{%- endpaginate -%}

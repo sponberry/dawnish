@@ -1,0 +1,151 @@
+shopify/products/update
+mechanic/user/product
+
+{% comment %}
+  {{ options.phantom_product_tag__required }}
+  {{ options.included_products_tag_prefix__required }}
+  {{ options.phantom_to_update_tag_prefix__required }}
+  {{ options.below_threshold_tag__required }}
+  {{ options.tagged_for_inventory_tag__required }}
+  {{ options.inventory_threshold__number_required }}
+{% endcomment %}
+
+{% assign phantom_tag = options.phantom_product_tag__required | strip %}
+{% assign below_threshold_tag = options.below_threshold_tag__required | strip %}
+{% assign tagged_for_inventory_tag = options.tagged_for_inventory_tag__required | strip %}
+{% assign included_prefix = options.included_products_tag_prefix__required | strip %}
+{% assign phantom_prefix = options.phantom_to_update_tag_prefix__required | strip %}
+{% assign inventory_threshold = options.inventory_threshold__number_required %}
+
+{% assign updatedProduct = event.data %}
+{% if updatedProduct.admin_graphql_api_id %}
+    {% assign admin_graphql_api_id = updatedProduct.admin_graphql_api_id %}
+  {% else %}
+    {% assign admin_graphql_api_id = updatedProduct.id %}
+  {% endif %}
+{% if updatedProduct.tags contains phantom_tag %}
+  {% comment %}Phantom products are tagged by the "Tag All Included Products with Associated Phantom" task.{% endcomment %}
+{% elsif updatedProduct.tags contains below_threshold_tag %}
+  {% comment %}Product is part of an OOS phantom products bundle that needs to be re-checked.{% endcomment %}
+  {% if updatedProduct.variants[0].inventory_quantity > inventory_threshold %}
+    {% assign productTags = updatedProduct.tags | strip | split: ","%}
+    {% log productTags %}
+    {% assign phantomProductsToUpdate = array %}
+    {% assign updatedTags = array %}
+    {% for tag in productTags %}
+      {% if tag contains phantom_prefix %}
+        {% log tag %}
+        {% assign phantomProductGIDArray = tag | split: '|' %}
+        {% for phantomProductGID in phantomProductGIDArray %}
+          {% assign cleanedPhantomProductGID = phantomProductGID | replace: phantom_prefix, ""%}
+          {% assign phantomProductsToUpdate = phantomProductsToUpdate | push: cleanedPhantomProductGID %}
+        {% endfor %}
+      {% endif %}
+      {% unless tag == below_threshold_tag%}
+        {% assign updatedTags[updatedTags.size] = tag %}
+      {% endunless %}
+    {% endfor %}
+    {% for phantomProductGID in phantomProductsToUpdate %}
+      {% action "shopify" %}
+        mutation {
+          productVariantUpdate(input: {
+            id: {{ phantomProductGID | strip | json }},
+            inventoryItem: {
+              tracked: false
+            }
+            inventoryPolicy: CONTINUE
+          }) {
+            product {
+              id
+              handle
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        } 
+      {% endaction %}
+    {% endfor %}
+
+    {% comment %}Now we remove the below threshold tag{% endcomment %}
+    {% action "shopify" %}
+      mutation {
+        productUpdate(input: {
+          id: {{ admin_graphql_api_id | strip | json }},
+          tags: {{ updatedTags | json }}
+        }) {
+          product {
+            id
+            handle
+            tags
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      } 
+    {% endaction %}
+  {% endif %}
+  {% comment %}
+    May need to add check later for multiple products in a phantom bundle - this would be more accurate but eat up more graphql request resource. Currently edge cases are covered by liquid so phantoms with any component OOS cannot be added to cart.
+  {% endcomment %}
+
+{% elsif updatedProduct.tags contains tagged_for_inventory_tag %}
+  {% comment %}Product has previously been tagged as part of a phantom product bundle{% endcomment %}
+  {% if updatedProduct.variants[0].inventory_quantity < inventory_threshold %}
+    {% assign productTags = updatedProduct.tags | strip | split: ","%}
+    {% assign phantomProductsToUpdate = array %}
+    {% for tag in productTags %}
+      {% if tag contains phantom_prefix %}
+        {% log tag %}
+        {% assign cleanedPhantomProductGID = tag | replace: phantom_prefix, ""%}
+        {% assign phantomProductsToUpdate = phantomProductsToUpdate | push: cleanedPhantomProductGID %}
+      {% endif %}
+    {% endfor %}
+    {% for phantomProductGID in phantomProductsToUpdate %}
+      {% action "shopify" %}
+        mutation {
+          productVariantUpdate(input: {
+            id: {{ phantomProductGID | strip | json }},
+            inventoryItem: {
+              tracked: true
+            }
+            inventoryPolicy: DENY
+          }) {
+            product {
+              id
+              handle
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        } 
+      {% endaction %}
+    {% endfor %}
+
+    {% comment %}Below threshold tag added so inventory can be rechecked on next product update.{% endcomment %}
+    {% assign updatedTags = productTags | push: below_threshold_tag %}
+    {% action "shopify" %}
+      mutation {
+        productUpdate(input: {
+          id: {{ admin_graphql_api_id | strip | json }},
+          tags: {{ updatedTags | json }}
+        }) {
+          product {
+            id
+            handle
+            tags
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      } 
+    {% endaction %}
+  {% endif %}
+{% endif %}

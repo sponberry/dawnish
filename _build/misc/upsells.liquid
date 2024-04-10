@@ -1,0 +1,106 @@
+{% liquid
+  assign template_name = 'snippet-upsells-pack-type'
+%}
+{% comment %}
+  isn't adding collection attribute to upsell prod from cart upsell
+{% endcomment %}
+
+<div class="{{- template_name -}}" data-section-type="{{- template_name -}}" hidden>
+  <h4 class="u-heading-sm">{{ 'template.cart.upsell_title' | t }}</h4>
+  <div class="upsells-pack-type-container">
+    <div class="upsells-alert">
+      {%- render 'icon', _name: 'icon-upgrade' -%} {{ 'template.cart.upsell_widget_text' | t }}
+    </div>
+    <button class="c-btn swiper-button arrow arrow-prev" data-upsells-slider-prev>
+      <span class="sr-only">{{ 'components.slider_labels.previous_slide' | t | escape }}</span>
+      {%- render 'icon', _name: 'icon-chevron-circle-left' -%}
+    </button>
+    <button class="c-btn swiper-button arrow arrow-next" data-upsells-slider-next>
+      <span class="sr-only">{{ 'components.slider_labels.next_slide' | t | escape }}</span>
+      {%- render 'icon', _name: 'icon-chevron-circle-right' -%}
+    </button>
+    <div class="swiper-container" data-upsells-slider>
+      <div class="swiper-wrapper" style="flex-direction:column;">
+      {% for item in _cart_line_items %}
+        {% if item.properties._phantomId != blank and item.properties._packType != "twin" %}
+            {% continue %}
+        {% endif %}
+        {% liquid
+          assign collection_handle = item.properties["_vehicle-collection"]
+          assign current_product_id = item.product_id
+          assign matched_collection = collections[collection_handle]
+          assign line_item_ids = _cart_line_items | map: 'id'
+        %}
+        {% for matched_product in matched_collection.products %}
+          {% assign matched_twin_products = "" %}
+          {% assign duplicate_product = "" %}
+
+          {% assign products_included = matched_product.metafields.custom.products_included.value %}
+          {% assign duplicate_product = matched_product.metafields.custom.duplicate_product_included.value | plus: 0 %}
+          
+          {% for included_prod in products_included %}
+            {% if line_item_ids contains included_prod.selected_or_first_available_variant.id %}
+              {% assign matched_twin_products = matched_twin_products | append: included_prod.selected_or_first_available_variant.id | append: "|" %}
+            {% endif %}
+          {% endfor %}
+          {% if duplicate_product == item.id %}
+            {% assign matched_twin_products = matched_twin_products | append: duplicate_product | append: "|" %}
+          {% endif %}
+          {% assign matched_twin_products_array = matched_twin_products | split: "|" %}
+
+          {% for included_product in products_included %}
+            {% if included_product.available == false %}
+              {% continue %}
+            {% endif %}
+            {% if included_product.id == current_product_id %}
+              {% if item.properties._packType == "twin" and matched_twin_products_array.size < 2 or item.properties._phantomId == matched_product.handle %}
+                  {% continue %}
+              {% endif %}
+
+              {% comment %} Found a bundle that includes the already added product {% endcomment %}
+              {% assign downcased_pack_type = matched_product.metafields.custom.pack_type | downcase %}
+              {% if downcased_pack_type == settings.twin_tab %}
+                {% assign card_message = settings.twin_message %}
+              {% elsif downcased_pack_type == settings.triple_tab %}
+                {% assign card_message = settings.triple_message %}
+              {% endif %}
+
+              {% assign products_included = matched_product.metafields.custom.products_included.value %}
+              {% assign all_included_prods_available = true %}
+              {% if matched_product.tags contains 'phantom' %}
+                {% assign phantom_product = true %}
+                {% for prod in products_included %}
+                  {% if prod.available == false %}
+                    {% assign all_included_prods_available = false %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+              {% if all_included_prods_available %}
+                <div class="swiper-slide" data-upsells-slide>
+                  {% if matched_twin_products_array.size > 1 %}
+                    {% assign old_product_string = matched_twin_products %}
+                  {% else %}
+                    {% assign old_product_string = item.id %}
+                  {% endif %}
+                  {% if item.properties._phantomId != blank %}
+                    {% assign phantom_product = all_products[item.properties._phantomId] %}
+                    {% assign old_price = phantom_product.price %}
+                  {% else %}
+                    {% assign old_price = item.price %}
+                  {% endif %}
+                  {% render 'product-upsell-item', product: matched_product, _old_product: old_product_string, _old_product_price: old_price, _duplicate: duplicate_product, _card_message: card_message, _id_modifier: _id_modifier %}
+                </div>
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+        {% endfor %}
+
+        {% if _first_item_only %}
+          {% break %}
+        {% endif %}
+      {% endfor %}
+      </div>
+    </div>
+    <div class="swiper-pagination" data-upsells-slider-pagination></div>
+  </div>
+</div>

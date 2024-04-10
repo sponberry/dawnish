@@ -1,0 +1,79 @@
+{
+    "name": "PLPs \/ Collections",
+    "settings": [
+      {
+        "type": "text",
+        "id": "twin_tab",
+        "label": "Data Value for Twin Packs",
+        "info": "Under the 'pack type' metafield filter. Used to generate tabs on collection page.",
+        "default": "twin pack"
+      },
+      {
+        "type": "text",
+        "id": "triple_tab",
+        "label": "Data Value for Triple Packs",
+        "info": "Under the 'pack type' metafield filter.",
+        "default": "triple pack"
+      },
+      {
+        "type": "text",
+        "id": "rear_tab",
+        "label": "Data Value for Rear Packs",
+        "info": "Under the 'pack type' metafield filter.",
+        "default": "rear pack"
+      },
+      {
+        "type": "checkbox",
+        "id": "specific_rear_fallback",
+        "label": "Show Rear Tab Using Specific Fit Rear Data?",
+        "default": true
+      },
+      {
+        "type": "text",
+        "id": "bg_filter",
+        "label": "Default Filter Group Applied to Collection Results",
+        "info": "e.g. for twin packs you would enter 'filter.p.m.custom.pack_type=Twin+Pack' - if the value has a capital letter this must be matched, e.g. the T of Twin, and spaces replaced with a + sign",
+        "default": "filter.p.m.custom.pack_type=Triple+Pack"
+      },
+      {
+        "type": "text",
+        "id": "bg_filter_fallback",
+        "label": "Fallback Default Filter Group Applied to Collection Results",
+        "default": "filter.p.m.custom.pack_type=Twin+Pack"
+      },
+      {
+        "type": "text",
+        "id": "ww_string",
+        "label": "Collection Name Suffix",
+        "info": "Makes up part of the collection url after the car make, model and year.",
+        "default": "windscreen-wiper-blades"
+      },
+      {
+        "type": "text",
+        "id": "fitment_guide_url",
+        "label": "Fitment Video Guide URL",
+        "info": "Sets the default URL of fitment video guide link",
+        "default": "\/pages\/fitting-guides"
+      },
+      {
+        "type": "page",
+        "id": "vehicle_page",
+        "label": "Vehicle Brands Page URL",
+        "info": "Sets the default URL of vehicle brands page link"
+      },
+      {
+        "type": "text",
+        "id": "no_index_filters",
+        "label": "No Index Filters",
+        "info": "For SEO use - filters to be separated with a comma, no spaces.",
+        "default": "availability,price"
+      },
+      {
+        "type": "text",
+        "id": "always_index_filters",
+        "label": "Always Canonicalise Filters",
+        "info": "For SEO use - FULL filter parameter to be separated with a comma, no spaces. These filters will be canonicalised even if their category is no-index.",
+        "default": "filter.p.m.custom.style=Specific+Fit+Rear"
+      }
+    ]
+  },

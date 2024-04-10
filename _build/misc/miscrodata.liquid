@@ -1,0 +1,213 @@
+{% comment %}
+      The Micro Data snippet.
+
+  Installation instructions:
+  1. Add just above the close body tag this {%- render 'microdata' -%}
+  2. Add to settings_schema.json the following variables
+  {
+      "name": "Microdata (JSON+LD)",
+      "settings": [
+          {
+              "type": "header",
+              "content": "General microdata"
+          },
+          {
+            "type": "text",
+            "id": "microdata_legal_name",
+            "label": "Legal Name of Business"
+          },
+          {
+            "type": "text",
+            "id": "microdata_trust_companyNumber",
+            "label": "Registered Company Number"
+          },
+          {
+            "type": "text",
+            "id": "microdata_trust_vatId",
+            "label": "VAT Registration Number"
+          },
+
+          {
+            "type": "header",
+            "content": "Local Business"
+          },
+          {
+            "type": "image_picker",
+            "id": "microdata_logo",
+            "label": "Microdata logo",
+            "info": "Schema company logo (600px x 600px)"
+          },
+          {
+            "type": "image_picker",
+            "id": "microdata_featured_image",
+            "label": "Featured Image"
+          },
+          {
+            "type": "text",
+            "id": "microdata_map",
+            "label": "Google Maps Link"
+          },
+          {
+            "type": "checkbox",
+            "id": "show_opening_hours",
+            "label": "Show opening hours?"
+          },
+          {
+            "type": "textarea",
+            "id": "opening_hours",
+            "label": "Opening Hours - Must be in schema.org format - see (Schema OpeningHours)[http:\/\/schema.org\/openingHours]",
+            "placeholder": "Mo,Tu,We,Th 09:00-12:00"
+          },
+          {
+            "type": "header",
+            "content": "Product"
+          },
+          {
+            "type": "select",
+            "id": "product_microdata_display_until",
+            "label": "Display Until",
+            "options": [
+              {
+                "value": "14",
+                "label": "14 Days"
+              },
+              {
+                "value": "30",
+                "label": "30 Days"
+              },
+              {
+                "value": "45",
+                "label": "45 Days"
+              },
+              {
+                "value": "60",
+                "label": "60 Days"
+              },
+              {
+                "value": "90",
+                "label": "90 Days"
+              },
+              {
+                "value": "120",
+                "label": "120 Days"
+              },
+              {
+                "value": "150",
+                "label": "150 Days"
+              },
+              {
+                "value": "180",
+                "label": "180 Days"
+              },
+              {
+                "value": "365",
+                "label": "365 Days"
+              }
+            ],
+            "default": "30"
+          }
+        ]
+    },
+    {
+      "name": "Social media & Microdata",
+      "settings": [
+          {
+              "type": "header",
+              "content": "Social sharing image"
+          },
+          {
+              "type": "image_picker",
+              "id": "share_image",
+              "label": "Image",
+              "info": "Shown when sharing a link on social media. [Learn more](https:\/\/help.shopify.com\/manual\/using-themes\/troubleshooting\/showing-social-media-thumbnail-images\/) about image thumbnails."
+          },
+          {
+              "type": "text",
+              "id": "social_image_width",
+              "label": "Image Width"
+          },
+          {
+              "type": "text",
+              "id": "social_image_height",
+              "label": "Image Height"
+          },
+          {
+              "type": "header",
+              "content": "Social Media Optimisation"
+          },
+          {
+              "type": "text",
+              "id": "social_og_locale",
+              "label": "OG Locale - http:\/\/ogp.me\/",
+              "default": "en_GB"
+          },
+          {
+              "type": "text",
+              "id": "geo_position",
+              "label": "Geo Position - http:\/\/www.geo-tag.de\/generator\/en.html",
+              "placeholder": "example: 53.718847, -0.426806"
+          },
+          {
+              "type": "text",
+              "id": "geo_place_name",
+              "label": "Geo Place Name",
+              "placeholder": "example: name of the building\/address"
+          },
+          {
+              "type": "header",
+              "content": "Social sharing options"
+          },
+          {
+              "type": "checkbox",
+              "id": "share_facebook",
+              "label": "Share on Facebook",
+              "default": true
+          },
+          {
+              "type": "checkbox",
+              "id": "share_twitter",
+              "label": "Tweet on Twitter",
+              "default": true
+          },
+          {
+              "type": "checkbox",
+              "id": "share_instagram",
+              "label": "Share on Instagram",
+              "default": true
+          },
+          {
+              "type": "header",
+              "content": "Sharing links"
+          },
+          {
+              "type": "text",
+              "id": "social_twitter_link",
+              "label": "Twitter link"
+          },
+          {
+              "type": "text",
+              "id": "social_facebook_link",
+              "label": "Facebook link"
+          },
+          {
+              "type": "text",
+              "id": "social_instagram_link",
+              "label": "Instagram link"
+          }
+      ]
+    }
+{% endcomment %}
+
+{%- if template == 'index' -%}
+  {%- render 'json-ld', markup: 'organisation', product, collection, article, blog, page -%}
+  {%- render 'json-ld', markup: 'webpage', product, collection, article, blog, page -%}
+{% else %}
+  {%- render 'json-ld' with markup: 'breadcrumb', product, collection, article, blog, page -%}
+{%- endif -%}
+
+{%- if template contains 'contact' or template contains 'store' -%}
+  {%- render 'json-ld', markup: 'localbusiness', product, collection, article, blog, page -%}
+{%- endif %}
+
+{%- if product -%}{%- render 'json-ld' with markup: 'product', product, collection, article, blog, page -%}{%- endif -%}
+{%- if article -%}{%- render 'json-ld' with markup: 'blogpost', product, collection, article, blog, page -%}{%- endif -%}
