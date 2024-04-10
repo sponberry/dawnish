@@ -1,0 +1,63 @@
+{% comment %}
+    The Product section template.
+{% endcomment %}
+
+{% liquid
+  assign template_name = 'product'
+  assign product_images = product.media | where: 'media_type', 'image'
+%}
+
+{{- 'product.css' | asset_url | stylesheet_tag -}}
+
+<div class="s-{{- template_name -}}" data-section-type="{{- template_name -}}" data-section-id="{{ section.id }}">
+  {% comment %}
+      Product Main
+  {% endcomment %}
+  <div class="container">
+      <div class="row justify-content-md-center">
+          <div class="col-md-10 col-lg-12">
+              <div class="product-main">
+                  {%- render
+                      'product-media',
+                      product: product,
+                      _product_images: product_images,
+                      image_disclaimer: section.settings.image_disclaimer
+                  -%}
+                  <div class="product-form {% if template.suffix %}generic{% endif %}">
+                      {%- render
+                          'product-form',
+                          product: product
+                      -%}
+                  </div>
+              </div>
+          </div>
+      </div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Product",
+  "tag": "section",
+  "settings": [
+      {
+          "type": "header",
+          "content": "Settings"
+      },
+      {
+          "type": "text",
+          "id": "image_disclaimer",
+          "label": "Disclaimer to show on colour renders",
+          "default": "Disclaimer: colour renders may not represent actual van model. Product title is the model to be purchased."
+      }
+  ],
+  "blocks": [
+  ],
+  "presets": [
+      {
+          "name": "Product",
+          "category": "Product"
+      }
+  ]
+}
+{% endschema %}

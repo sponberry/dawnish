@@ -1,0 +1,34 @@
+{% if template.suffix == 'larger-image' %}
+  {{- 'product-media-alt.css' | asset_url | stylesheet_tag -}}
+{% else %}
+  {{- 'product-media.css' | asset_url | stylesheet_tag -}}
+{% endif %}
+
+<div class="product-media {% if template.suffix == 'generic' %}generic{% endif %}" data-section-type="product-media" data-section-id="{{ section.id }}">
+  <div class="feature {% if template.suffix == 'generic' %}generic{% endif %}">
+    <svg role="img" class="loading-icon loading">
+      <use xlink:href="#sprite-icon-spinner"></use>
+    </svg>
+    <picture>
+      <source media="(min-width:1024px)" srcset="{{ product.featured_image | image_url: width: 1200 }}" />
+      <source media="(min-width:551px)" srcset="{{ product.featured_image | image_url: width: 600 }}" />
+      <source media="(max-width: 550px)" srcset="{{ product.featured_image | image_url: width: 450 }}" />
+      <img
+        src="{{ product.featured_image | image_url: width:450 }}"
+        alt="{{ product.featured_image.alt | default: product.title }}"
+        loading="lazy"
+        id="{{ product.handle }}-img"
+        onerror="javascript: 
+              var imageToReload = document.querySelector('#{{ product.handle }}-img');
+              imageToReload.setAttribute('src', imageToReload.dataset.defaultImage);
+        "
+        onload="javascript:
+          var featureImage = document.querySelector('.feature');
+          featureImage.classList.remove('is-loading');
+        "
+        data-default-image="{{ product.featured_image | image_url: width:1200 }}"
+      />
+    </picture>
+  </div>
+  <p data-disclaimer-statement>{{ image_disclaimer }}</p>
+</div>

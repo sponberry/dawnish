@@ -1,0 +1,355 @@
+{% liquid
+  assign current_variant = product.selected_or_first_available_variant
+  assign product_attributes = product.title | split: '|'
+  assign gloss_available = product.metafields.hcf.gloss | handleize
+  assign matte_available = product.metafields.hcf.matte | handleize
+%}
+
+
+{%- capture current_variant_price -%}{%- render 'product-pricing', _current_variant: current_variant, property: 'price' -%}{%- endcapture -%}
+{%- capture current_variant_compare_at_price -%}{%- render 'product-pricing', _current_variant: current_variant, property: 'compare_at_price' -%}{%- endcapture -%}
+
+<div class="ruk_rating_snippet reviews" data-sku="{{ product.handle }};{{ product.variants | map: 'sku' | join: ';' }};{{ product.variants | map: 'id' | join: ';' }}"></div>
+
+<h1 class="title" id="product-heading">{{ product_attributes | first }}</h1>
+
+<ul class="product-attributes">
+  {% for product_attribute in product_attributes offset: 1 %}
+      <li>{{- product_attribute -}}{%- unless forloop.last -%}<span class="divider">|</span>{%- endunless -%}</li>
+  {% endfor %}
+</ul>
+
+{% comment %}
+  Availability
+{% endcomment %}
+<div class="unavailable" data-product-unavailable{% if current_variant.available %} hidden{% endif %}>
+  <p class="mb-0">This product is currently unavailable.</p>
+</div>
+
+{% comment %}
+  Description
+{% endcomment %}
+<div class="description">
+  {%- if product.description -%}
+      {{- product.description -}}
+  {%- endif -%}
+</div>
+
+{% comment %}
+  Form
+{% endcomment %}
+{%- form 'product', product, class: 'c-form', data-product-form: '', data-product-handle: product.handle -%}
+  <input name="id" type="hidden" value="{{ current_variant.id }}" data-product-form-variant-id />
+
+  {% comment %}
+      Options
+  {% endcomment %}
+  {%- for option in product.options_with_values -%}
+      {%- if option.name == 'Coverage' -%}
+          {%- assign coverage_position = option.position-%}
+          <div class="product-option coverage-options" data-product-option>
+              <h2>
+                   {{ 'products.product.coverage' | t }}
+                   <span data-tooltip="{{ 'products.product.coverage_tooltip' | t }}" class="tooltip-bottom-left tooltip-multiline">
+                       <svg aria-hidden="true" role="presentation">
+                           <use xlink:href="#sprite-icon-info-tooltip"></use>
+                       </svg>
+                   </span>
+              </h2>
+              <ul role="menu" class="checkbox-list">
+                  {% if option.selected_value == 'Both' %}
+                      {% assign both_selected = true %}
+                  {% elsif option.selected_value == 'Top' %}
+                      {% assign top_selected = true %}
+                  {% elsif option.selected_value == 'Bottom' %}
+                      {% assign top_selected = true %}
+                  {% endif %}
+                  {%- for value in option.values -%}
+                      {%- liquid
+                      assign sold_out = false
+                      assign variant_found = false
+
+                      for variant in product.variants
+                          if variant.option1 == value and variant.option2 == current_variant.option2
+                              unless variant.available
+                                  assign sold_out = true
+                              endunless
+                              if current_variant.id == variant.id
+                                  assign variant_found = true
+                              endif
+                          endif
+                      endfor
+                  -%}
+                      <li role="presentation" class="checkbox-option {% if sold_out == true %} is-disabled{% endif %}">
+                          <label
+                              class="checkbox-option-label{% if variant_found == true %} is-selected{% endif %}"
+                              for="productOption{{ option.position }}-{{ value }}"
+                              data-variant-id="{{ variant.id }}"
+                          >
+                              <input
+                                  class="checkbox-option-input{% if sold_out == true %} is-disabled{% endif %}"
+                                  type="radio"
+                                  id="productOption{{ option.position }}-{{ value }}"
+                                  name="options[{{ option.name }}]"
+                                  value="{{ value }}"
+                                  {% if option.selected_value == value %} checked{% endif %}
+                                  {% if sold_out == true %}disabled{% endif %}
+                                  data-product-option
+                              />
+                              <span class="checkmark">
+                                  <svg aria-hidden="true">
+                                      <use xlink:href="#sprite-icon-tick"></use>
+                                  </svg>
+                              </span>
+                              <span>{{ value }}</span>
+                          </label>
+                      </li>
+                  {%- endfor -%}
+              </ul>
+          </div>
+      {%- elsif option.name == 'Style' -%}
+          <div hidden data-product-option>
+              {%- for value in option.values -%}
+                  {%- liquid
+                  assign sold_out = false
+                  assign variant_found = false
+
+                  for variant in product.variants
+                      if variant.option1 == current_variant.option1 and variant.option2 == value
+                      unless variant.available
+                          assign sold_out = true
+                      endunless
+                      if current_variant.id == variant.id
+                          assign variant_found = true
+                      endif
+                      endif
+                  endfor
+              -%}
+                  <label
+                      class="checkbox-option-label{% if variant_found == true %} is-selected{% endif %}"
+                      for="productOption{{ option.position }}-{{ value }}"
+                      data-variant-id="{{ variant.id }}"
+                  >
+                      <input
+                          class="checkbox-option-input{% if sold_out == true %} is-disabled{% endif %}"
+                          type="radio"
+                          id="productOption{{ option.position }}-{{ value }}"
+                          name="options[{{ option.name }}]"
+                          value="{{ value }}"{% if option.selected_value == value %} checked{% endif %} data-product-option
+                      />
+                      <span class="checkmark">
+                          <svg aria-hidden="true">
+                              <use xlink:href="#sprite-icon-tick"></use>
+                          </svg>
+                      </span>
+                      <span>{{ value }}</span>
+                  </label>
+          {%- endfor -%}
+          </div>
+      {%- else -%}
+          {% if template.suffix == 'generic' %}
+              {% unless option.name == 'Title' %}
+                  <div class="form-field" data-product-option>
+                      <label class="form-label" for="productOption{{ option.position }}">
+                          {{- option.name -}}: <span data-option-position="{{ option.position }}">{{ option.selected_value }}</span>
+                      </label>
+                      <select class="form-input product-size-options" id="productOption{{ option.position }}" name="options[{{ option.name | escape }}]">
+                          {%- for value in option.values -%}
+                              <option
+                                  value="{{ value | escape }}"{% if option.selected_value == value %} selected{% endif %}>
+                                  {%- if product.handle == 'gift-card' -%}
+                                      {{- cart.currency.symbol | append: value -}}
+                                  {%- else -%}
+                                      {{- value -}}
+                                  {%- endif -%}
+                              </option>
+                          {%- endfor -%}
+                      </select>
+                  </div>
+              {% endunless %}
+          {% endif %}
+      {% endif %}
+  {%- endfor -%}
+
+  {% unless template.suffix == 'generic' %}
+
+      <div {% if both_selected %} hidden {% endif %} id="first-palette-container">
+          {% render 'colour-options-palette' %}
+      </div>
+      <div {% unless both_selected %} hidden {% endunless %} id="second-palette-container">
+          {% render 'colour-options-palette', style_selection: 'Top' %}
+          {% render 'colour-options-palette', style_selection: 'Bottom' %}
+      </div>
+
+      {% if settings.finish_options_enabled %}
+          {% unless gloss_available == 'false' and matte_available == 'false' %}
+              <div class="product-option finish-options">
+                  <h2>
+                          {{ 'products.product.finish' | t }}
+                          <span data-tooltip="{{ 'products.product.finish_tooltip' | t }}" class="tooltip-bottom-left tooltip-multiline">
+                              <svg aria-hidden="true" role="presentation">
+                                  <use xlink:href="#sprite-icon-info-tooltip"></use>
+                              </svg>
+                          </span>
+                  </h2>
+                  <ul role="menu" class="checkbox-list">
+                      {% if settings.gloss_enabled %}
+                          <li role="presentation" class="checkbox-option {% if gloss_available == 'false' %} is-disabled{% endif %}">
+                              <label
+                                  class="checkbox-option-label is-selected"
+                                  for="productOption{{ 'products.product.finish' | t }}-{{ 'products.product.gloss' | t }}"
+                              >
+                                  <input
+                                      class="checkbox-option-input {% if gloss_available == 'false' %} is-disabled{% endif %}"
+                                      type="radio"
+                                      id="productOption{{ 'products.product.finish' | t }}-{{ 'products.product.gloss' | t }}"
+                                      name="properties[{{ 'products.product.finish' | t }}]"
+                                      value="{{ 'products.product.gloss' | t }}" 
+                                      data-finish-option="{{ 'products.product.gloss' | t }}"
+                                      {% unless settings.matte_enabled %} checked {% endunless %}
+                                  />
+                                  <span class="checkmark">
+                                      <svg aria-hidden="true">
+                                          <use xlink:href="#sprite-icon-tick"></use>
+                                      </svg>
+                                  </span>
+                                  <span>{{ 'products.product.gloss' | t }}</span>
+                              </label>
+                          </li>
+                      {% endif %}
+                      {% if settings.matte_enabled%}
+                          <li role="presentation" class="checkbox-option {% if matte_available == 'false' %} is-disabled{% endif %}">
+                              <label
+                                  class="checkbox-option-label"
+                                  for="productOption{{ 'products.product.finish' | t }}-{{ 'products.product.matte' | t }}"
+                              >
+                                  <input
+                                      class="checkbox-option-input {% if matte_available == 'false' %} is-disabled{% endif %}"
+                                      type="radio"
+                                      id="productOption{{ 'products.product.finish' | t }}-{{ 'products.product.matte' | t }}"
+                                      name="properties[{{ 'products.product.finish' | t }}]"
+                                      value="{{ 'products.product.matte' | t }}" 
+                                      data-finish-option="{{ 'products.product.matte' | t }}"
+                                      {% unless settings.gloss_enabled %} checked {% endunless %}
+                                  />
+                                  <span class="checkmark">
+                                      <svg aria-hidden="true">
+                                          <use xlink:href="#sprite-icon-tick"></use>
+                                      </svg>
+                                  </span>
+                                  <span>{{ 'products.product.matte' | t }}</span>
+                              </label>
+                          </li>
+                      {% endif %}
+                  </ul>
+              </div>
+          {% endunless %}
+      {% endif %}
+  {% endunless %}
+
+  <noscript>
+      <div class="mb-4">
+          <label class="form-label" for="productOptions">
+              {{- 'Options' | escape -}}
+          </label>
+          <select class="form-input" id="productOptions" name="id" >
+              {%- for variant in product.variants -%}
+                  {%- capture local_current_variant_price -%}{%- render 'product-pricing', _current_variant: variant, property: 'price' -%}{%- endcapture -%}
+                  <option
+                      {% if variant == current_variant %}selected="selected"{% endif %}
+                      {% unless variant.available %}disabled="disabled"{% endunless %}
+                      value="{{ variant.id }}">
+                      {{ variant.title }} - {{ local_current_variant_price | money }}
+                  </option>
+              {%- endfor -%}
+          </select>
+      </div>
+  </noscript>
+
+  <div class="quantity-price">
+  {% comment %}
+      Quantity hidden
+  {% endcomment %}
+      <div>
+          <label class="form-label visually-hidden" for="Quantity">Quantity</label>
+          <div class="c-qty" hidden data-product-qty>
+              <button class="btn minus" type="button" data-product-qty-minus>
+                  <span class="visually-hidden">{{ 'Minus' }}</span>
+                  <svg aria-hidden="true" role="presentation">
+                      <use xlink:href="#sprite-alt-icon-minus"></use>
+                  </svg>
+              </button>
+              <input class="form-input" type="number" id="Quantity" name="quantity" value="1" min="1" step="1" required data-product-qty-input />
+              <button class="btn plus" type="button" data-product-qty-plus>
+                  <span class="visually-hidden">{{ 'Plus' }}</span>
+                  <svg aria-hidden="true" role="presentation">
+                      <use xlink:href="#sprite-alt-icon-plus"></use>
+                  </svg>
+              </button>
+          </div>
+      </div>
+
+      {% comment %}
+          Configuration & Price
+      {% endcomment %}
+      <div class="configuration-box {% if template.suffix == 'generic' %}generic{% endif %}">
+          {% unless template.suffix == 'generic' %}
+              <ul class="details" title="{{ 'sections.product.labels.config' | t }}">
+                  <li>
+                      {%- assign coverage_index = coverage_position | minus: 1 -%}
+                      <span class="details-label">Coverage:</span>
+                      <span class="details-options" data-option-position="{{ coverage_position }}">{{ product.options_with_values[coverage_index].selected_value }}</span>
+                  </li>
+                  <li>
+                      <span class="details-label">{{ 'products.product.colour' | t }}:</span>
+                      <span class="details-options" data-selected-colour></span>
+                  </li>
+                  <li>
+                      <span class="details-label">{{ 'sections.product.labels.finish' | t }}:</span>
+                      <span class="details-options" data-selected-finish></span>
+                  </li>
+              </ul>
+          {% endunless %}
+          <div class="price {% if template.suffix == 'generic' %}generic{% endif %}">
+              <div class="price-label">{{ 'sections.product.labels.price' | t }}</div>
+              <div {% unless current_variant.compare_at_price > current_variant.price %}hidden{% endunless %}>
+                  <span>was </span>
+                  <span data-product-item-price="{{ current_variant.compare_at_price }}" data-product-price-original>
+                      {%- if current_variant.compare_at_price > current_variant.price -%}
+                          {{- current_variant_compare_at_price | money -}}
+                      {%- endif -%}
+                  </span>
+              </div>
+              <div {% unless current_variant.compare_at_price > current_variant.price %}hidden{% endunless %}>
+                  <span>save </span>
+                  <span data-product-price-saving>
+                      {%- if current_variant.compare_at_price > current_variant.price -%}
+                          {{- current_variant_compare_at_price | minus: current_variant_price | money -}}
+                      {%- endif -%}
+                  </span>
+              </div>
+              <div data-product-price-container>
+                  <span data-product-item-price="{{ current_variant.price }}" data-product-price data-product-id="{{ product.id }}">
+                      {{ current_variant_price | money }}
+                  </span>
+                  <span class="vat-description" data-vat-text>{{ 'sections.product.labels.inc_vat' | t }}</span>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  {% comment %}
+      Add to Cart
+  {% endcomment %}
+  <button class="c-btn-primary" type="submit" name="add"{% unless current_variant.available %} disabled{% endunless %} data-product-submit-button>
+      <span data-product-submit-button-text>
+          {%- if current_variant.available -%}
+              {{ 'products.product.add_to_cart' | t }}
+          {%- else -%}
+              {{ 'products.product.sold_out' | t }}
+          {%- endif -%}
+      </span>
+  </button>
+  <p class="help-message">{{ 'products.product.help_message' | t }} <strong>{{ 'products.product.call_us' | t: phone: settings.company_phone }}</strong></p>
+{%- endform -%}
+

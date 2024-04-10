@@ -1,0 +1,110 @@
+
+{% if settings.searchspring %}
+{{ 'section-searchspring-recommendations.css' | asset_url | stylesheet_tag }}
+<script type="text/javascript" src="{{ 'section-searchspring-recommendations.js' | asset_url }}" defer></script>
+
+<section 
+  class="section section-searchspring-recommendations container" 
+  data-section-id="{{ section.id }}"
+  data-section-type="searchspring-recommendations"
+>
+  {% render 'searchspring-recommendations', section: section, tags: section.settings.tags %}
+</section> 
+{% endif %}
+
+{% schema %}
+{
+  "name": "SS Recommendations",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Content & Title"
+    },
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Title"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_slider",
+      "label": "Show As Slider?",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Product Items"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_reviews",
+      "label": "Show Reviews Stars?",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_roundels",
+      "label": "Show Roundels?",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "alt_image",
+      "label": "Show Secondary Image?",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_wishlist",
+      "label": "Show Wishlist?",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_strips",
+      "label": "Show Feature Strips?",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Searchspring Recommendations"
+    },
+    {
+      "type": "text",
+      "id": "tags",
+      "label": "Recommendation Tag"
+    },
+    {
+      "type": "text",
+      "id": "categories",
+      "label": "Categories",
+      "info": "This is required when using Category Trending recommendation profiles. If specifying more than one category, comma separate without spaces e.g. lingerie,swimwear"
+    },
+    {
+      "type": "text",
+      "id": "brands",
+      "label": "Brands",
+      "info": "This is required when using Brands Trending recommendation profiles. If specifying more than one brand, comma separate without spaces e.g. flirtelle,curvy-kate"
+    },
+    {
+      "type": "text",
+      "id": "placement",
+      "label": "Placement Name",
+      "info": "Will be sent with tracking data. Enter one of the following strings (e.g. product-page) depending on page type: Product Detail Page - 'product-page', Home Page - 'home-page', No Results - 'no-results-page', Order Confirmation Page - 'confirmation-page', Basket Page - 'basket-page', 404 Page - '404-page', User Account Page - 'user-account-page', Other Page - 'other'"
+    },
+    {
+      "type": "number",
+      "id": "rec_limit",
+      "label": "Recommendation Limit",
+      "default": 20
+    }
+  ],
+  "blocks": [],
+  "presets": [
+    {
+      "name": "SS Recommendations",
+      "category": "Content"
+    }
+  ]
+}
+{% endschema %}
