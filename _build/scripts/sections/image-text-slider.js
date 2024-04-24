@@ -1,5 +1,3 @@
-import { delayedLoadSection } from '../inc/theme-section-loader';
-
 const selectors = {
   slider: '[data-it-slider]',
   pagination: '[data-it-slider-pagination]',
@@ -48,11 +46,11 @@ const sectionEvents = {
         breakpoints: {
           [theme.breakpoints.md]: {
             slidesPerView: 2,
-          }
+          },
         },
       });
     }
   },
 };
 
-delayedLoadSection('section-image-text-slider', sectionEvents);
+sectionEvents.onLoad();

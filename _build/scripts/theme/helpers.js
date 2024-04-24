@@ -1,27 +1,16 @@
-// Lock Scrolling
-
-export function lockScrolling() {
-  document.body.style.overflowY = "hidden";
-}
-
-// Unlock Scrolling
-export function unlockScrolling() {
-  document.body.style.removeProperty("overflow");
-}
-
 export function updateCanonicalLinks(fullUrl) {
-  let [collectionUrl, urlParams] = fullUrl.includes("?") ? fullUrl.split("?") : [fullUrl, ''];
-  let url = ''
-  const urlParts = urlParams.includes("&") ? urlParams.split("&") : [ urlParams ];
+  let [collectionUrl, urlParams] = fullUrl.includes('?') ? fullUrl.split('?') : [fullUrl, ''];
+  let url = '';
+  const urlParts = urlParams.includes('&') ? urlParams.split('&') : [urlParams];
   if (theme.noIndexFilters && theme.noIndexFilters.length > 0) {
-    urlParts.forEach(filter => {
+    urlParts.forEach((filter) => {
       console.log(filter);
       const lowercaseFilter = filter.toLowerCase();
-      let useFilter = theme.noIndexFilters.every(noIndexName => lowercaseFilter.indexOf(noIndexName) === -1);
+      let useFilter = theme.noIndexFilters.every((noIndexName) => lowercaseFilter.indexOf(noIndexName) === -1);
       if (theme.alwaysIndexFilters && theme.alwaysIndexFilters.includes(filter)) useFilter = true;
       if (useFilter) url = '?' + filter;
     });
-  };
+  }
 
   const jsonLdScript = document.querySelector('[type="application/ld+json"]');
   const oldJson = jsonLdScript.innerHTML;
@@ -47,32 +36,6 @@ export const debounce = (fn, delay) => {
   };
 };
 
-export async function getJsonFetchResponse(url, token) {
-  const headers = {
-    Accept: "*/*",
-    "Content-Type": "application/json",
-  };
-  if (token) {
-    headers.Authorization = token;
-  }
-  const response = await fetch(url, {
-    method: "GET",
-    headers,
-  });
-  const json = await response.json();
-  return json;
-};
-
-export async function getJsonData(endpoint) {
-  let response = await fetch(endpoint);
-  if (response.status === 404) {
-    return response;
-  } else {
-    let data = await response.json();
-    return data;
-  }
-}
-
 export async function getPDPData(collectionURL) {
   const collection = collectionURL ? `&collection=${collectionURL}` : '';
   const queryString = `${collection}`;
@@ -82,10 +45,10 @@ export async function getPDPData(collectionURL) {
   console.log('URL Param:', urlParam);
 
   return fetch(urlParam, {
-    method: "get",
+    method: 'get',
     headers: {
-      Accept: "application/json, text/plain, */*",
-      "Content-Type": "application/json",
+      Accept: 'application/json, text/plain, */*',
+      'Content-Type': 'application/json',
     },
   }).then((response) => {
     return response.text();
@@ -94,18 +57,18 @@ export async function getPDPData(collectionURL) {
 
 export async function getFetchResponse(url, token) {
   const headers = {
-    Accept: "*/*",
-    "Content-Type": "application/json",
+    Accept: '*/*',
+    'Content-Type': 'application/json',
   };
   if (token) {
     headers.Authorization = token;
   }
   const response = await fetch(url, {
-    method: "GET",
+    method: 'GET',
     headers,
   });
   return response;
-};
+}
 
 export async function loadCollectionData() {
   if (sessionStorage.getItem('collectionHandle')) {
@@ -120,7 +83,7 @@ export async function loadCollectionData() {
     const data = await getJsonData(`${endpoint}${viewId}`);
     return data.products;
   }
-};
+}
 
 export function sortObjectsByAttribute(objectsArray, attribute) {
   return objectsArray.sort((a, b) => {
@@ -138,26 +101,26 @@ export function sortObjectsByAttribute(objectsArray, attribute) {
 }
 
 // Lock Scrolling
-var siteContainerEl = document.querySelector("[data-site-container]");
+var siteContainerEl = document.querySelector('[data-site-container]');
 
 export function lockScrolling() {
-  siteContainerEl.style.overflowY = "hidden";
-  siteContainerEl.style.height = "100dvh";
+  siteContainerEl.style.overflowY = 'hidden';
+  siteContainerEl.style.height = '100dvh';
 }
 
 // Unlock Scrolling
 export function unlockScrolling() {
-  siteContainerEl.style.removeProperty("overflow");
-  siteContainerEl.style.height = "auto";
+  siteContainerEl.style.removeProperty('overflow');
+  siteContainerEl.style.height = 'auto';
 }
 
 export function setCookie(name, value, days) {
-  let expires = "";
+  let expires = '';
 
-  if (days && days !== "") {
+  if (days && days !== '') {
     let date = new Date();
     date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
-    expires = "; expires=" + date.toUTCString();
+    expires = '; expires=' + date.toUTCString();
   } else {
     expires = '; expires=""';
   }
@@ -166,38 +129,23 @@ export function setCookie(name, value, days) {
 }
 
 export function getCookie(name) {
-  let nameEquals = name + "=";
-  let ca = document.cookie.split(";");
+  let nameEquals = name + '=';
+  let ca = document.cookie.split(';');
 
   for (let i = 0; i < ca.length; i++) {
     let c = ca[i];
-    while (c.charAt(0) == " ") c = c.substring(1);
+    while (c.charAt(0) == ' ') c = c.substring(1);
     if (c.indexOf(nameEquals) != -1) return c.substring(nameEquals.length, c.length);
   }
 
   return null;
 }
 
-export function updateCanonicalLinks(fullUrl) {
-  const url = fullUrl.includes("&") ? fullUrl.split("&")[0] : fullUrl;
-
-  const jsonLdScript = document.querySelector('[type="application/ld+json"]');
-  const oldJson = jsonLdScript.innerHTML;
-  let [preLinkJson, postLinkJson] = oldJson.split('"@id": "');
-  postLinkJson = postLinkJson.split(postLinkJson.split('"')[0])[1];
-  console.log(`${preLinkJson}"@id": "${url}${postLinkJson}`);
-  jsonLdScript.innerHTML = `${preLinkJson}"@id": "${url}${postLinkJson}`;
-
-  const canonicalLink = document.querySelector('[rel="canonical"]');
-
-  canonicalLink.href = theme.url + url;
-}
-
-export function initWishlistButtons(container = document, selector = ".wishlist-add") {
+export function initWishlistButtons(container = document, selector = '.wishlist-add') {
   let onSuccessList = function (listContents) {
     listContents.forEach((listItem) => {
       const swymButton = document.querySelector(`[data-epi="${listItem.epi}"]`);
-      if (swymButton) swymButton.classList.add("swym-added");
+      if (swymButton) swymButton.classList.add('swym-added');
     });
   };
   let onSuccess = function (lists) {
@@ -206,7 +154,7 @@ export function initWishlistButtons(container = document, selector = ".wishlist-
     });
   };
   let onError = function (error) {
-    console.log("Error while fetching all Lists", error);
+    console.log('Error while fetching all Lists', error);
   };
   window._swat.fetchLists({
     callbackFn: onSuccess,
@@ -214,13 +162,13 @@ export function initWishlistButtons(container = document, selector = ".wishlist-
   });
 
   const callback = function () {
-    console.log("added to wishlist");
+    console.log('added to wishlist');
   }; // callback can be replaced if needed
   const wishlistButtons = container.querySelectorAll(selector);
   wishlistButtons.forEach((button) => {
-    button.addEventListener("click", (e) => {
+    button.addEventListener('click', (e) => {
       e.preventDefault();
-      const buttonNode = e.target.closest("button");
+      const buttonNode = e.target.closest('button');
       const variants = {};
       variants[buttonNode.dataset.variantTitle] = Number(buttonNode.dataset.epi);
       const buttonData = {
@@ -228,16 +176,16 @@ export function initWishlistButtons(container = document, selector = ".wishlist-
         du: buttonNode.dataset.du,
         empi: Number(buttonNode.dataset.empi),
         iu: buttonNode.dataset.iu,
-        pr: Number(buttonNode.dataset.pr.replace("£", "")) / 100,
+        pr: Number(buttonNode.dataset.pr.replace('£', '')) / 100,
         cprops: {}, // can be used to customise event in future
         variants: variants,
       };
 
-      if (buttonNode.classList.contains("swym-added")) {
-        buttonNode.classList.remove("swym-added");
+      if (buttonNode.classList.contains('swym-added')) {
+        buttonNode.classList.remove('swym-added');
         window._swat.removeFromWishList(buttonData);
       } else {
-        buttonNode.classList.add("swym-added");
+        buttonNode.classList.add('swym-added');
         window._swat.addToWishList(buttonData, callback);
       }
     });
@@ -252,15 +200,15 @@ export function initWishlistButtons(container = document, selector = ".wishlist-
  */
 export async function getJsonFetchResponse(url) {
   const response = await fetch(url, {
-    method: "get",
+    method: 'get',
     headers: {
-      Accept: "application/json, text/plain, */*",
-      "Content-Type": "application/json",
+      Accept: 'application/json, text/plain, */*',
+      'Content-Type': 'application/json',
     },
   });
   const json = await response.json();
   return json;
-};
+}
 
 /**
  * Make a JSON POST request.
@@ -287,7 +235,6 @@ export async function makeJsonPostRequest(url, data, headers = {}) {
 }
 
 /**
-
 Asynchronously retrieves parameters for a given item.
 Constructs a URL based on the item's handle or mappings.core.url.
 Modifies the URL query string based on specified parameters.
@@ -303,22 +250,24 @@ export async function getParamsItem(item) {
 
   const lazyload = item.params && item.params.lazyload ? '' : '&lazyload=false';
   const isSlide = item.params && item.params.isSlide ? '&slide=true' : '';
-  const showWishlist = item.params && item.params.showWishlist == "false" ? '&wishlist=false' : '';
-  const showStrips = item.params && item.params.showStrips == "false" ? '&featureStrips=false' : '';
-  const showReviews = item.params && item.params.showReviews == "false" ? '&reviews=false' : '';
-  const showRoundels = item.params && item.params.showRoundels == "false" ? '&roundels=false' : '';
-  const altImage = item.params && item.params.altImage == "true" ? '&alternatePicture=true' : '';
+  const showWishlist = item.params && item.params.showWishlist == 'false' ? '&wishlist=false' : '';
+  const showStrips = item.params && item.params.showStrips == 'false' ? '&featureStrips=false' : '';
+  const showReviews = item.params && item.params.showReviews == 'false' ? '&reviews=false' : '';
+  const showRoundels = item.params && item.params.showRoundels == 'false' ? '&roundels=false' : '';
+  const altImage = item.params && item.params.altImage == 'true' ? '&alternatePicture=true' : '';
   const index = item.params && item.params.index !== undefined ? `&index=${item.params.index}` : '';
   const intellisuggestData = item.intellisuggestData ? `&intellisuggestData=${item.intellisuggestData}` : '';
-  const intellisuggestSignature = item.intellisuggestSignature ? `&intellisuggestSignature=${item.intellisuggestSignature}` : '';
+  const intellisuggestSignature = item.intellisuggestSignature
+    ? `&intellisuggestSignature=${item.intellisuggestSignature}`
+    : '';
 
   const queryString = `${lazyload}${isSlide}${showReviews}${showRoundels}${altImage}${showWishlist}${showStrips}${intellisuggestData}${intellisuggestSignature}${index}`;
   const urlParam = `${url}?sections=product-list-item${queryString}`;
   const shopifyResponse = await fetch(urlParam, {
-    method: "get",
+    method: 'get',
     headers: {
-      Accept: "application/json, text/plain, */*",
-      "Content-Type": "application/json",
+      Accept: 'application/json, text/plain, */*',
+      'Content-Type': 'application/json',
     },
   });
   return shopifyResponse;
@@ -333,7 +282,7 @@ export async function getJsonData(endpoint) {
     let data = await response.json();
     return data;
   } catch (error) {
-    console.error("Error fetching data:", error);
+    console.error('Error fetching data:', error);
     return {};
   }
 }
@@ -349,18 +298,18 @@ export async function getGADataItem(item, i) {
   const viewId = '?view=gaData';
   const data = await getJsonData(`${url}${viewId}`);
   const gaProductJson = await data;
-  const amalgamatedData = transformSSData(item, gaProductJson.product, i)
+  const amalgamatedData = transformSSData(item, gaProductJson.product, i);
 
   return amalgamatedData;
-};
+}
 
 export async function getNonLazyLoadedItem(item) {
   const urlParam = `/products/${item.handle}?sections=product-list-item&lazyload=false`;
   const shopifyResponse = await fetch(urlParam, {
-    method: "get",
+    method: 'get',
     headers: {
-      Accept: "application/json, text/plain, */*",
-      "Content-Type": "application/json",
+      Accept: 'application/json, text/plain, */*',
+      'Content-Type': 'application/json',
     },
   });
   return shopifyResponse;
@@ -369,45 +318,45 @@ export async function getNonLazyLoadedItem(item) {
 export async function getProductItem(item) {
   const urlParam = `/products/${item.handle}?sections=product-list-item`;
   const shopifyResponse = await fetch(urlParam, {
-    method: "get",
+    method: 'get',
     headers: {
-      Accept: "application/json, text/plain, */*",
-      "Content-Type": "application/json",
+      Accept: 'application/json, text/plain, */*',
+      'Content-Type': 'application/json',
     },
   });
   return shopifyResponse;
-};
+}
 
-export function transformSSData(ssItem, gaItem={}, index) {
+export function transformSSData(ssItem, gaItem = {}, index) {
   const item = ssItem.mappings ? { id: ssItem.id, ...ssItem.mappings.core } : ssItem;
   const data = {
     index,
     discount: item.msrp - item.price,
     item_brand: item.brand,
     price: item.price,
-    quantity: 1
+    quantity: 1,
   };
-  if (item.product_type_unigram) data["item_variant"] = item.product_type_unigram;
-  if (!gaItem.item_id) data["item_id"] = item.id;
-  if (!gaItem.item_name) data["item_name"] = item.name;
+  if (item.product_type_unigram) data['item_variant'] = item.product_type_unigram;
+  if (!gaItem.item_id) data['item_id'] = item.id;
+  if (!gaItem.item_name) data['item_name'] = item.name;
   if (ssItem.mappings) {
-    data["item_category4"] = 'Rec: ' + ssItem.params.placementTag;    
+    data['item_category4'] = 'Rec: ' + ssItem.params.placementTag;
   } else if (theme.relativeItemCategory) {
-    data["item_category4"] = theme.relativeItemCategory;
-  };
-  return {...data, ...gaItem};
+    data['item_category4'] = theme.relativeItemCategory;
+  }
+  return { ...data, ...gaItem };
 }
 
-export function sendGA4Data(items, eventName, itemListId=theme.collectionName, itemListName=theme.collectionTitle) {
+export function sendGA4Data(items, eventName, itemListId = theme.collectionName, itemListName = theme.collectionTitle) {
   console.log(eventName);
   console.log({
     item_list_id: itemListId ? itemListId : '',
     item_list_name: itemListName ? itemListName : theme.relativeItemCategory,
-    items
+    items,
   });
-  gtag("event", eventName, {
+  gtag('event', eventName, {
     item_list_id: itemListId ? itemListId : '',
     item_list_name: itemListName ? itemListName : theme.relativeItemCategory,
-    items
+    items,
   });
 }

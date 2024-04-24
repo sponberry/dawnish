@@ -350,6 +350,10 @@
         recipientFormCollapsed: `{{ 'recipient.form.collapsed' | t }}`,
         countrySelectorSearchCount: `{{ 'localization.country_results_count' | t: count: '[count]' }}`,
       };
+
+      window.theme = {
+        template: {{ template.name | json}}
+      }
     </script>
 
     {%- if settings.predictive_search_enabled -%}

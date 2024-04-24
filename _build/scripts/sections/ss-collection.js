@@ -1,4 +1,13 @@
-import { lockScrolling, unlockScrolling, getCookie, setCookie, getJsonFetchResponse, getParamsItem, sendGA4Data, getGADataItem } from "../plugins-imports/helpers";
+import {
+  // lockScrolling,
+  // unlockScrolling,
+  // getCookie,
+  // setCookie,
+  // getJsonFetchResponse,
+  getParamsItem,
+  // sendGA4Data,
+  // getGADataItem
+} from '../theme/helpers';
 const uuid = require('uuid');
 
 const themeName = theme.template;
@@ -14,27 +23,26 @@ const selectors = {
   collectionEmptyBack: `[data-${themeName}-empty-back]`,
   productItem: '.product-list-item',
   skuAttr: 'data-product-sku',
-  filtersClear: "[data-clear-filter-link]",
+  filtersClear: '[data-clear-filter-link]',
   filtersApply: `[data-${themeName}-filters-apply]`,
-  priceRangeSlider: "[data-price-range-slider]",
-  minValueInput: "[data-min-value-input]",
-  maxValueInput: "[data-max-value-input]",
-  storefrontFiltersForm: "[data-storefront-filter-form]",
-
+  priceRangeSlider: '[data-price-range-slider]',
+  minValueInput: '[data-min-value-input]',
+  maxValueInput: '[data-max-value-input]',
+  storefrontFiltersForm: '[data-storefront-filter-form]',
 
   filtersOpen: `[data-${themeName}-filters-open]`,
   sizesMenu: `[data-${themeName}-sizes-open]`,
   filtersClose: `[data-${themeName}-filters-close]`,
-  filtersOverlay: "[data-filters-overlay]",
-  resultsContainer: "[data-results-container]",
+  filtersOverlay: '[data-filters-overlay]',
+  resultsContainer: '[data-results-container]',
   filters: `[data-${themeName}-filters]`,
   filtersCategoryToggle: `[data-${themeName}-filters-category-toggle]`,
   filtersCategoryToggleTemplate: `[data-togglename-filters-category-toggle]`,
   filtersCategoryContent: `[data-${themeName}-filters-category-content]`,
   filtersCategoryContentTemplate: `[data-togglename-filters-category-content]`,
-  filtersCategoryColumn: ".filters-categories-column",
-  filtersContentColumn: ".filter-content-column",
-  activeFiltersList: ".active-filters-list",
+  filtersCategoryColumn: '.filters-categories-column',
+  filtersContentColumn: '.filter-content-column',
+  activeFiltersList: '.active-filters-list',
   filtersLink: `[id^=filter]`,
   filtersHeader: '[data-filters-header]',
   clearAllLink: '.clear-all-link',
@@ -57,38 +65,41 @@ const selectors = {
 };
 
 const classes = {
-  active: "is-active",
-  disabled: "is-disabled",
-  loading: "is-loading",
-  visible: "is-visible",
-  grid: "is-grid",
-  list: "is-list",
-  sizeLinkAttr: "data-size-link",
+  active: 'is-active',
+  disabled: 'is-disabled',
+  loading: 'is-loading',
+  visible: 'is-visible',
+  grid: 'is-grid',
+  list: 'is-list',
+  sizeLinkAttr: 'data-size-link',
   loadingSpinner: 'loading-spinner',
-  activeFilters: "has-active-filters",
+  activeFilters: 'has-active-filters',
   empty: 'is-empty',
   hidden: 'is-hidden',
-  scrolled: 'is-scrolled'
+  scrolled: 'is-scrolled',
 };
 
 const searchspringEndpoints = {
   root: `https://${theme.siteId}.a.searchspring.io/api/`,
   search: `search/search.json?siteId=${theme.siteId}`,
   suggest: `suggest/query?siteId=${theme.siteId}`,
-  autocomplete: `search/autocomplete.json?siteId=${theme.siteId}`
+  autocomplete: `search/autocomplete.json?siteId=${theme.siteId}`,
 };
 
 const templateText = {
   value: 'template',
-  label: "Template",
-  templateName: "togglename",
-  multiple: "Multiple",
-  variantSizeFilter: "ss_filter_sizes",
+  label: 'Template',
+  templateName: 'togglename',
+  multiple: 'Multiple',
+  variantSizeFilter: 'ss_filter_sizes',
 };
 
-function replaceLabels(string, filter) {  
-  return string.replaceAll(templateText.value, filter.field).replace(templateText.label, filter.label).replace(templateText.templateName, themeName);  
-};
+function replaceLabels(string, filter) {
+  return string
+    .replaceAll(templateText.value, filter.field)
+    .replace(templateText.label, filter.label)
+    .replace(templateText.templateName, themeName);
+}
 
 const sectionCollection = {
   onFiltersInit(container) {
@@ -101,15 +112,15 @@ const sectionCollection = {
     this.state = {};
     this.state.isFetching = false;
     this.state.lastClicked = null;
-    this.state.activeFilters = []
+    this.state.activeFilters = [];
 
     const hrefParts = window.location.href.indexOf('?') === -1 ? [] : window.location.href.split('?')[1].split('&');
-    hrefParts.forEach(urlParam => {
-      if (urlParam.indexOf("filter.") !== -1) {
+    hrefParts.forEach((urlParam) => {
+      if (urlParam.indexOf('filter.') !== -1) {
         const unescapedString = decodeURI(urlParam);
         this.state.activeFilters = [...this.state.activeFilters, unescapedString];
-      } else if (urlParam.indexOf("page=") !== -1) {
-        this.state.pageNum = urlParam.split("=")[1];
+      } else if (urlParam.indexOf('page=') !== -1) {
+        this.state.pageNum = urlParam.split('=')[1];
       } else if (urlParam.indexOf('sort') !== -1) {
         this.state.sortBy = urlParam;
       } else if (urlParam.indexOf('q=') !== -1) {
@@ -117,16 +128,16 @@ const sectionCollection = {
       } else {
         console.error('Unknown URL param: ', urlParam);
       }
-    })
+    });
     this.state.pageNum = this.state.pageNum || 0;
     this.state.activeFilterCat = 0;
 
     // Init
-      this.initAjax();
-      this.closeFilters();
+    this.initAjax();
+    this.closeFilters();
 
     // Ensure back button reloads results
-    window.onpopstate = function(e) {
+    window.onpopstate = function (e) {
       window.location.href = window.location.href;
     };
 
@@ -153,7 +164,7 @@ const sectionCollection = {
   },
 
   captureTemplateNodes() {
-    const button = document.querySelector(selectors.filtersCategoryToggleTemplate)
+    const button = document.querySelector(selectors.filtersCategoryToggleTemplate);
     if (button) this.templateButton = button.cloneNode(true);
     const content = document.querySelector(selectors.filtersCategoryContentTemplate);
     if (content) this.templateContent = content.cloneNode(true);
@@ -192,7 +203,10 @@ const sectionCollection = {
 
     const clearAllLink = document.createElement('a');
     clearAllLink.innerText = 'Clear All';
-    const clearAllHref = window.location.href.indexOf('/search') === -1 ? window.location.href.split('?')[0] : window.location.href.split('&')[0];
+    const clearAllHref =
+      window.location.href.indexOf('/search') === -1
+        ? window.location.href.split('?')[0]
+        : window.location.href.split('&')[0];
     clearAllLink.setAttribute('href', clearAllHref);
     clearAllLink.classList.add('clear-all-link');
 
@@ -205,33 +219,41 @@ const sectionCollection = {
         prevUrl: window.location.href,
       });
       this.newResultsPageLoad();
-    };
+    }
 
     clearAllLink.addEventListener('click', handleClearAllClick.bind(this));
-    this.elements.filtersHeader.insertBefore(clearAllLink, this.elements.filtersHeader.children[1])
+    this.elements.filtersHeader.insertBefore(clearAllLink, this.elements.filtersHeader.children[1]);
   },
 
   renderFilterElements(filter, buttonEl, valuesEl, i) {
     let filterToggle = replaceLabels(buttonEl, filter);
-    if (this.state.activeFilterCat !== i && this.state.activeFilterCat !== filter.field) filterToggle = filterToggle.replace('aria-expanded="true"', '');
-    filterToggle = filterToggle.slice(0, filterToggle.indexOf('">')+1) + ` data-filter-name="${filter.field}"` + filterToggle.slice(filterToggle.indexOf('">')+1, filterToggle.length);
+    if (this.state.activeFilterCat !== i && this.state.activeFilterCat !== filter.field)
+      filterToggle = filterToggle.replace('aria-expanded="true"', '');
+    filterToggle =
+      filterToggle.slice(0, filterToggle.indexOf('">') + 1) +
+      ` data-filter-name="${filter.field}"` +
+      filterToggle.slice(filterToggle.indexOf('">') + 1, filterToggle.length);
     const filterContentString = replaceLabels(valuesEl, filter);
     const filterClearLinks = [];
 
     // Node Creation
     const valuesList = document.createElement('ul');
-    filter.values.forEach(value => {
+    filter.values.forEach((value) => {
       // only generates multi-checkbox currently
       const textSpan = document.createElement('span');
-      textSpan.innerText = `${value.label} (${value.count})`
- 
+      textSpan.innerText = `${value.label} (${value.count})`;
+
       const filterNameDiv = document.createElement('div');
       filterNameDiv.classList.add('filter-name');
 
       const filterLink = document.createElement('a');
       const filterString = `filter.${filter.field}=${value.value}`;
-      const filterUrlString = encodeURI(filterString)
-      const href = `${window.location.href.indexOf('/search') === -1 ? window.location.href.split('?')[0] : window.location.href.split('&')[0]}?${filterUrlString}`;
+      const filterUrlString = encodeURI(filterString);
+      const href = `${
+        window.location.href.indexOf('/search') === -1
+          ? window.location.href.split('?')[0]
+          : window.location.href.split('&')[0]
+      }?${filterUrlString}`;
 
       filterLink.setAttribute('href', href);
       filterLink.setAttribute('id', filterString);
@@ -262,27 +284,26 @@ const sectionCollection = {
 
       // Values List
       valuesList.appendChild(li);
-
     });
 
     if (filter.field === templateText.variantSizeFilter) {
       this.renderSizes(filter);
     }
 
-    const parser = new DOMParser;
+    const parser = new DOMParser();
     const filterContent = parser.parseFromString(filterContentString, 'text/html').body.firstChild;
-    if (this.state.activeFilterCat !== i && this.state.activeFilterCat !== filter.field) filterContent.classList.remove(classes.active);
+    if (this.state.activeFilterCat !== i && this.state.activeFilterCat !== filter.field)
+      filterContent.classList.remove(classes.active);
     filterContent.appendChild(valuesList);
 
-    return ({
+    return {
       filterToggle,
       filterContent,
-      filterClearLinks
-    })
+      filterClearLinks,
+    };
   },
 
   renderSizes(filterData) {
-    
     const placeholder = document.createElement('option');
     placeholder.setAttribute('value', '');
     placeholder.innerText = this.elements.sizesMenu.getAttribute('placeholder');
@@ -291,8 +312,8 @@ const sectionCollection = {
     tempMenu.appendChild(placeholder);
 
     let selectedValues = 0;
-    filterData.values.forEach(filter => {
-      const filterString = `filter.${filterData.field}=${filter.value}`
+    filterData.values.forEach((filter) => {
+      const filterString = `filter.${filterData.field}=${filter.value}`;
       const option = document.createElement('option');
       option.setAttribute('value', filter.value);
       option.innerText = filter.label;
@@ -300,7 +321,7 @@ const sectionCollection = {
       if (filter.active) {
         option.setAttribute('selected', 'selected');
         selectedValues += 1;
-    }
+      }
       tempMenu.appendChild(option);
     });
     if (selectedValues === 0) placeholder.setAttribute('selected', 'selected');
@@ -308,13 +329,13 @@ const sectionCollection = {
     tempMenu.addEventListener('change', this.handleSizeChange.bind(this));
     this.elements.sizesMenu.replaceWith(tempMenu);
   },
-  
+
   handleSizeChange(e) {
     const selectedFilterIndex = e.target.selectedIndex;
     const selectedFilter = e.target.children[selectedFilterIndex];
-    const nonSizeFilters = this.state.activeFilters.filter(activeFilter => activeFilter.indexOf('size') === -1);
+    const nonSizeFilters = this.state.activeFilters.filter((activeFilter) => activeFilter.indexOf('size') === -1);
     // const href = `${window.location.href.split('?')[0]}${nonSizeFilters.length > 0 ? '?' : ''}${nonSizeFilters.join('&')}&${selectedFilter.id}`;
-    
+
     this.state.activeFilters = [...nonSizeFilters, selectedFilter.id];
     this.state.pageNum = 0;
     this.state.sortBy = null;
@@ -325,9 +346,9 @@ const sectionCollection = {
       prevUrl: window.location.href,
     });
 
-    if(window.innerWidth > 960) {
-      window.scrollTo(0,0);
-    };
+    if (window.innerWidth > 960) {
+      window.scrollTo(0, 0);
+    }
     this.newResultsPageLoad();
   },
 
@@ -344,10 +365,15 @@ const sectionCollection = {
     this.renderQueryInfo();
   },
 
-  createUrl(includePageNum=false) {
-    const baseHref = window.location.href.indexOf('/search') === -1 ? window.location.href.split('?')[0] : window.location.href.split('&')[0];
+  createUrl(includePageNum = false) {
+    const baseHref =
+      window.location.href.indexOf('/search') === -1
+        ? window.location.href.split('?')[0]
+        : window.location.href.split('&')[0];
     const filters = this.state.activeFilters.join('&');
-    const newUrl = `${baseHref}${baseHref.indexOf('?') === -1 ? '?' : '&'}${filters}${this.state.sortBy ? '&' + this.state.sortBy : ''}${this.state.pageNum > 0 && includePageNum ? '&' + this.state.pageNum : ''}`
+    const newUrl = `${baseHref}${baseHref.indexOf('?') === -1 ? '?' : '&'}${filters}${
+      this.state.sortBy ? '&' + this.state.sortBy : ''
+    }${this.state.pageNum > 0 && includePageNum ? '&' + this.state.pageNum : ''}`;
     return newUrl.replace('?&', '?');
   },
 
@@ -356,10 +382,18 @@ const sectionCollection = {
     queryDataEl.innerHTML = '';
 
     if (queryDataEl && queryData.corrected) {
-      const infoString = queryDataEl.getAttribute(selectors.queryInfoAttr).replace('X', queryData.corrected).replace('Y', queryData.original);
+      const infoString = queryDataEl
+        .getAttribute(selectors.queryInfoAttr)
+        .replace('X', queryData.corrected)
+        .replace('Y', queryData.original);
       queryDataEl.innerHTML = infoString;
     } else if (queryDataEl && queryData.didYouMean) {
-      const infoString = queryDataEl.getAttribute(selectors.didYouMeanAttr).replace('X', `<a class='highlighted' ${selectors.suggestLinkAttr}="${queryData.didYouMean.query}">${queryData.didYouMean.query}</a>`);
+      const infoString = queryDataEl
+        .getAttribute(selectors.didYouMeanAttr)
+        .replace(
+          'X',
+          `<a class='highlighted' ${selectors.suggestLinkAttr}="${queryData.didYouMean.query}">${queryData.didYouMean.query}</a>`
+        );
       queryDataEl.innerHTML = infoString;
       queryDataEl.children[0].addEventListener('click', this.handleSuggestClick.bind(this));
     } else if (queryDataEl && queryData == 'none') {
@@ -377,23 +411,28 @@ const sectionCollection = {
     const newValues = templateValuesClone.outerHTML.toString();
 
     // remove Shopify filters
-    this.elements.filtersCategoryToggles.forEach(toggle => toggle.remove());
-    this.elements.filtersCategoryContents.forEach(content => content.remove());
+    this.elements.filtersCategoryToggles.forEach((toggle) => toggle.remove());
+    this.elements.filtersCategoryContents.forEach((content) => content.remove());
 
     const filtersToggles = [];
     const filtersContents = [];
     const activeFilters = [];
     filtersData.forEach((filter, index) => {
-      const { filterToggle, filterContent, filterClearLinks } = this.renderFilterElements(filter, newButton, newValues, index);
+      const { filterToggle, filterContent, filterClearLinks } = this.renderFilterElements(
+        filter,
+        newButton,
+        newValues,
+        index
+      );
 
       filtersToggles.push(filterToggle);
       filtersContents.push(filterContent);
-      filterClearLinks.forEach(link => activeFilters.push(link));
+      filterClearLinks.forEach((link) => activeFilters.push(link));
     });
     const contents = document.createElement('div');
-    filtersContents.forEach(filterContent => contents.appendChild(filterContent));
+    filtersContents.forEach((filterContent) => contents.appendChild(filterContent));
     const clearLinks = document.createElement('div');
-    activeFilters.forEach(clearLink => clearLinks.appendChild(clearLink));
+    activeFilters.forEach((clearLink) => clearLinks.appendChild(clearLink));
 
     this.elements.filtersCategoryColumn.innerHTML = filtersToggles.join('');
     this.elements.filtersContentColumn.innerHTML = contents.innerHTML;
@@ -414,19 +453,19 @@ const sectionCollection = {
     e.preventDefault();
     const selectedSortIndex = e.target.selectedIndex;
     const selectedSort = e.target.children[selectedSortIndex];
-    
+
     this.state.sortBy = selectedSort.value;
     this.state.pageNum = 0;
-    
+
     const updatedHref = this.createUrl();
 
     this.pushState(updatedHref, {
       prevUrl: window.location.href,
     });
 
-    if(window.innerWidth > 960) {
-      window.scrollTo(0,0);
-    };
+    if (window.innerWidth > 960) {
+      window.scrollTo(0, 0);
+    }
     this.newResultsPageLoad();
   },
 
@@ -442,7 +481,7 @@ const sectionCollection = {
     placeholder.innerText = 'Sort By';
     sortContainer.appendChild(placeholder);
 
-    sortingData.forEach(sortOption => {
+    sortingData.forEach((sortOption) => {
       const option = document.createElement('option');
       const value = `sort.${sortOption.field}=${sortOption.direction}`;
       option.value = value;
@@ -471,50 +510,53 @@ const sectionCollection = {
       window.location.href = redirectUrl;
     } else if (productItems.length === 0 && themeName === 'search') {
       if (jsonResponse.didYouMean) {
-        this.renderQueryInfo(jsonResponse)
+        this.renderQueryInfo(jsonResponse);
       } else {
-        this.renderQueryInfo('none')
+        this.renderQueryInfo('none');
       }
       const utilsSection = document.querySelector(selectors.collectionUtils);
       utilsSection.hidden = 'hidden';
-      if (utilsSection.dataset.nostoEnabled === "true") {
-        utilsSection.innerHTML = `<h3 class="title has-text-centered is-spaced is-size-4 has-margin-bottom has-text-weight-normal has-font-tertiary">Bestsellers you might like</h3> <div class="nosto_element" id="search_no_results"></div>`
+      if (utilsSection.dataset.nostoEnabled === 'true') {
+        utilsSection.innerHTML = `<h3 class="title has-text-centered is-spaced is-size-4 has-margin-bottom has-text-weight-normal has-font-tertiary">Bestsellers you might like</h3> <div class="nosto_element" id="search_no_results"></div>`;
       } else {
         utilsSection.innerHTML = '';
         const searchspringRecsContainer = document.querySelector(selectors.searchspringRecsContainer);
         searchspringRecsContainer.removeAttribute('hidden');
-      };
-    };
+      }
+    }
     Promise.all(productItems).then((productItemResponses) => {
       const productItemValues = productItemResponses.map((item) => item.json());
 
       Promise.all(productItemValues).then((values) => {
-        const resultsHtml = values.map(value => value[this.productItemSection]).join('');
+        const resultsHtml = values.map((value) => value[this.productItemSection]).join('');
         this.elements.resultsContainer.innerHTML = resultsHtml;
 
         const merchandisingBanners = jsonResponse.merchandising.content.inline;
-        if (merchandisingBanners && merchandisingBanners.length > 0) {   
-          merchandisingBanners.forEach(banner => {
+        if (merchandisingBanners && merchandisingBanners.length > 0) {
+          merchandisingBanners.forEach((banner) => {
             const bannerDiv = document.createElement('div');
             bannerDiv.classList.add('product-list-item');
             const lazyloadValue = banner.value.replace('src=', 'class="lazyload" data-src=');
             bannerDiv.innerHTML = lazyloadValue;
-            this.elements.resultsContainer.insertBefore(bannerDiv, this.elements.resultsContainer.children[banner.config.position.index]);
+            this.elements.resultsContainer.insertBefore(
+              bannerDiv,
+              this.elements.resultsContainer.children[banner.config.position.index]
+            );
           });
-        };
+        }
         this.addItemClickListeners();
         this.setLoaded();
-        sendGA4Data(this.gaItems, "view_item_list");
+        sendGA4Data(this.gaItems, 'view_item_list');
       });
     });
-    
 
     // Render filters
     if (jsonResponse.facets.length > 0) this.renderProductFilters(jsonResponse.facets);
-    if (jsonResponse.sorting.options && jsonResponse.sorting.options.length > 0) this.renderSorting(jsonResponse.sorting.options);
+    if (jsonResponse.sorting.options && jsonResponse.sorting.options.length > 0)
+      this.renderSorting(jsonResponse.sorting.options);
     if (jsonResponse.query) this.renderQueryInfo(jsonResponse.query);
 
-     // Render next & prev
+    // Render next & prev
     this.renderPagination(jsonResponse);
 
     this.initElements();
@@ -526,23 +568,30 @@ const sectionCollection = {
     async function handleClick(e) {
       if (this.clickLogged === true) return;
       e.preventDefault();
-      const productItem = e.target.classList.contains(selectors.productItem.replace('.', '')) ? e.target : e.target.closest(selectors.productItem);
+      const productItem = e.target.classList.contains(selectors.productItem.replace('.', ''))
+        ? e.target
+        : e.target.closest(selectors.productItem);
       if (this.gaItems) {
-        const gaItem = this.gaItems.find(item => String(item.item_id) === productItem.getAttribute(selectors.skuAttr));
-        if (gaItem) sendGA4Data([gaItem], "select_item");
+        const gaItem = this.gaItems.find(
+          (item) => String(item.item_id) === productItem.getAttribute(selectors.skuAttr)
+        );
+        if (gaItem) sendGA4Data([gaItem], 'select_item');
       }
       this.clickLogged = true;
       e.target.click();
     }
-    allItems.forEach(item => {
+    allItems.forEach((item) => {
       item.addEventListener('click', handleClick.bind(this));
     });
   },
 
   onClickPagination(e) {
-    const cleanedHref = window.location.href.replace(`&page=${this.state.pageNum}`, '').replace(`?page=${this.state.pageNum}`, '');
+    const cleanedHref = window.location.href
+      .replace(`&page=${this.state.pageNum}`, '')
+      .replace(`?page=${this.state.pageNum}`, '');
     const selectedPage = e.target.getAttribute('data-page');
-    const updatedHref = cleanedHref.indexOf('?') === -1 ? `${cleanedHref}?page=${selectedPage}` : `${cleanedHref}&page=${selectedPage}`;
+    const updatedHref =
+      cleanedHref.indexOf('?') === -1 ? `${cleanedHref}?page=${selectedPage}` : `${cleanedHref}&page=${selectedPage}`;
     this.state.pageNum = selectedPage;
     this.newResultsPageLoad();
     this.pushState(updatedHref, {
@@ -582,7 +631,7 @@ const sectionCollection = {
     this.initFilters();
     this.initSort();
 
-    if (this.backBtn) this.backBtn.addEventListener("click", this.onClickEmptyBack.bind(this));
+    if (this.backBtn) this.backBtn.addEventListener('click', this.onClickEmptyBack.bind(this));
   },
 
   initAjax(reinitialise = false) {
@@ -593,11 +642,11 @@ const sectionCollection = {
     // this.initAjaxSort();
     // this.initAjaxPagination();
     if (reinitialise && theme.quickCart) new theme.quickCart.constructor();
-    if (this.backBtn) this.backBtn.addEventListener("click", this.onClickEmptyBack.bind(this));
+    if (this.backBtn) this.backBtn.addEventListener('click', this.onClickEmptyBack.bind(this));
   },
 
   setState(key, value) {
-    if (typeof key !== "undefined" && this.state.hasOwnProperty(key) && typeof value !== "undefined") {
+    if (typeof key !== 'undefined' && this.state.hasOwnProperty(key) && typeof value !== 'undefined') {
       this.state[key] = value;
     }
     return this.state;
@@ -605,7 +654,7 @@ const sectionCollection = {
 
   initSort() {
     if (this.elements.collectionSort) {
-      this.elements.collectionSort.addEventListener("change", this.onSort.bind(this));
+      this.elements.collectionSort.addEventListener('change', this.onSort.bind(this));
     }
   },
 
@@ -618,7 +667,7 @@ const sectionCollection = {
     let selected = sortElement.options[sortElement.selectedIndex];
 
     // Update the query params and trigger a page reload
-    queryParams.set("sort_by", selected.value);
+    queryParams.set('sort_by', selected.value);
     window.location.search = queryParams;
   },
 
@@ -626,22 +675,24 @@ const sectionCollection = {
     if (!this.elements.filters) return;
 
     if (this.elements.filtersOpen) {
-      this.elements.filtersOpen.addEventListener("click", this.onClickFiltersOpen.bind(this));
+      this.elements.filtersOpen.addEventListener('click', this.onClickFiltersOpen.bind(this));
     }
 
     if (this.elements.filtersCategoryToggles.length) {
       this.elements.filtersCategoryToggles.forEach((filtersCategoryToggle) => {
-        filtersCategoryToggle.addEventListener("click", this.onClickFiltersCategoryToggle.bind(this));
+        filtersCategoryToggle.addEventListener('click', this.onClickFiltersCategoryToggle.bind(this));
       });
     }
 
     if (this.elements.filtersClose.length > 0) {
-      this.elements.filtersClose.forEach(filterClose => filterClose.addEventListener("click", this.onClickFiltersClose.bind(this)));
+      this.elements.filtersClose.forEach((filterClose) =>
+        filterClose.addEventListener('click', this.onClickFiltersClose.bind(this))
+      );
       // this.elements.filtersClose.children.forEach(child => child.addEventListener("click", this.onClickFiltersClose.bind(this)));
     }
 
     if (this.elements.filtersApply) {
-      this.elements.filtersApply.addEventListener("click", this.onClickFiltersApply.bind(this));
+      this.elements.filtersApply.addEventListener('click', this.onClickFiltersApply.bind(this));
     }
   },
 
@@ -649,7 +700,7 @@ const sectionCollection = {
     if (!this.elements.filtersOpen) return;
     if (!this.elements.filters) return;
 
-    this.elements.filtersOpen.addEventListener("click", this.onClickFiltersOpen.bind(this));
+    this.elements.filtersOpen.addEventListener('click', this.onClickFiltersOpen.bind(this));
   },
 
   initFiltersAccordions() {
@@ -657,7 +708,7 @@ const sectionCollection = {
 
     if (this.elements.filtersCategoryToggles.length) {
       this.elements.filtersCategoryToggles.forEach((filtersCategoryToggle) => {
-        filtersCategoryToggle.addEventListener("click", this.onClickFiltersCategoryToggle.bind(this));
+        filtersCategoryToggle.addEventListener('click', this.onClickFiltersCategoryToggle.bind(this));
       });
     }
   },
@@ -666,9 +717,9 @@ const sectionCollection = {
     event.preventDefault();
 
     if (!this.elements.filters.classList.contains(classes.visible)) {
-      if(window.innerWidth < 960) {
-        window.scrollTo(0,0)
-      };
+      if (window.innerWidth < 960) {
+        window.scrollTo(0, 0);
+      }
 
       lockScrolling();
       return this.openFilters();
@@ -677,18 +728,19 @@ const sectionCollection = {
 
   onClickFiltersCategoryToggle(event) {
     event.preventDefault();
-    const filtersButton = event.target.closest("button");
-    if (!filtersButton || !filtersButton.getAttribute('aria-controls')) throw new Error('No button or controlled category content specified.');
+    const filtersButton = event.target.closest('button');
+    if (!filtersButton || !filtersButton.getAttribute('aria-controls'))
+      throw new Error('No button or controlled category content specified.');
 
     const filterCategoryContent = document.getElementById(filtersButton.getAttribute('aria-controls'));
     if (!filterCategoryContent.classList.contains(classes.active)) {
-      this.elements.filtersCategoryContents.forEach(toggle => toggle.classList.remove(classes.active));
+      this.elements.filtersCategoryContents.forEach((toggle) => toggle.classList.remove(classes.active));
       filterCategoryContent.classList.add(classes.active);
-      this.elements.filtersCategoryToggles.forEach(toggle => toggle.setAttribute("aria-expanded", false));
-      filtersButton.setAttribute("aria-expanded", true);
+      this.elements.filtersCategoryToggles.forEach((toggle) => toggle.setAttribute('aria-expanded', false));
+      filtersButton.setAttribute('aria-expanded', true);
 
       this.state.activeFilterCat = filtersButton.dataset.filterName;
-    } 
+    }
   },
 
   onClickFiltersApply(event) {
@@ -707,7 +759,7 @@ const sectionCollection = {
   },
 
   openFilters() {
-    this.lastButtonClicked = "filter";
+    this.lastButtonClicked = 'filter';
     this.elements.filters.classList.add(classes.visible);
     this.elements.filtersOverlay.classList.add(classes.visible);
     this.elements.utils.classList.add(classes.active);
@@ -717,7 +769,7 @@ const sectionCollection = {
   },
 
   closeFilters() {
-    this.lastButtonClicked = "filter";
+    this.lastButtonClicked = 'filter';
     this.elements.filters.classList.remove(classes.visible);
     this.elements.filtersOverlay.classList.remove(classes.visible);
     this.elements.utils.classList.remove(classes.active);
@@ -728,14 +780,14 @@ const sectionCollection = {
 
   pushState(url, props = {}) {
     if (!url) return;
-    if (url == "") return;
+    if (url == '') return;
     window.history.pushState(props, null, url);
   },
 
   initAjaxLinks() {
     if (this.elements.filtersLinks && this.elements.filtersLinks.length) {
       this.elements.filtersLinks.forEach((link) => {
-        link.addEventListener("click", this.onClickAjaxLink.bind(this));
+        link.addEventListener('click', this.onClickAjaxLink.bind(this));
       });
     }
   },
@@ -745,16 +797,16 @@ const sectionCollection = {
 
     const btn = event.currentTarget,
       // href = btn.hasAttribute("href") ? btn.getAttribute("href") : btn.getAttribute("data-href"),
-      selectedFilter = btn.hasAttribute("id") ? btn.getAttribute("id") : null,
+      selectedFilter = btn.hasAttribute('id') ? btn.getAttribute('id') : null,
       isActive = btn.classList.contains(classes.active);
 
-    this.setState("lastClicked", btn);
+    this.setState('lastClicked', btn);
     // const pageReplacedHref = href.replace(`&page=${this.state.pageNum}`, '').replace(`?page=${this.state.pageNum}`, '?').replace(`?page=${this.state.pageNum}&`, '?');
-    
+
     this.state.pageNum = 0;
 
     if (isActive) {
-      this.state.activeFilters = this.state.activeFilters.filter(filter => filter !== selectedFilter);
+      this.state.activeFilters = this.state.activeFilters.filter((filter) => filter !== selectedFilter);
       this.newResultsPageLoad();
     } else {
       this.state.activeFilters.push(selectedFilter);
@@ -773,18 +825,24 @@ const sectionCollection = {
 
   initAjaxPagination() {
     if (this.elements.collectionPagination) {
-      let paginationLinks = [...this.elements.collectionPagination.querySelectorAll("a")];
+      let paginationLinks = [...this.elements.collectionPagination.querySelectorAll('a')];
       paginationLinks.forEach((paginationLink) => {
-        paginationLink.addEventListener("click", this.onClickAjaxPagination.bind(this));
+        paginationLink.addEventListener('click', this.onClickAjaxPagination.bind(this));
       });
     }
 
     if (theme.enableInfiniteResults) {
       if (this.elements.collectionPaginationLessBtn) {
-        this.elements.collectionPaginationLessBtn.addEventListener("click", this.onClickAjaxPaginationDirection.bind(this));
+        this.elements.collectionPaginationLessBtn.addEventListener(
+          'click',
+          this.onClickAjaxPaginationDirection.bind(this)
+        );
       }
       if (this.elements.collectionPaginationMoreBtn) {
-        this.elements.collectionPaginationMoreBtn.addEventListener("click", this.onClickAjaxPaginationDirection.bind(this));
+        this.elements.collectionPaginationMoreBtn.addEventListener(
+          'click',
+          this.onClickAjaxPaginationDirection.bind(this)
+        );
       }
     }
   },
@@ -792,10 +850,10 @@ const sectionCollection = {
   async onClickAjaxPagination(event) {
     event.preventDefault();
 
-    this.lastButtonClicked = "pagination";
+    this.lastButtonClicked = 'pagination';
 
     const btn = event.currentTarget,
-      url = btn.hasAttribute("href") ? btn.getAttribute("href") : null;
+      url = btn.hasAttribute('href') ? btn.getAttribute('href') : null;
 
     const response = await this.getCollectionResults(url);
   },
@@ -803,14 +861,19 @@ const sectionCollection = {
   async onClickAjaxPaginationDirection(event) {
     event.preventDefault();
 
-    this.lastButtonClicked = "pagination";
+    this.lastButtonClicked = 'pagination';
 
-    const isMoreButton = event.target.dataset.collectionPaginationMoreBtn === undefined ? event.target.dataset.searchPaginationMoreBtn === undefined ? false : true : true; // checking for both search and collection buttons as datasets will be different
-    const direction = isMoreButton ? "next" : "previous";
+    const isMoreButton =
+      event.target.dataset.collectionPaginationMoreBtn === undefined
+        ? event.target.dataset.searchPaginationMoreBtn === undefined
+          ? false
+          : true
+        : true; // checking for both search and collection buttons as datasets will be different
+    const direction = isMoreButton ? 'next' : 'previous';
 
     const btn = event.target,
-      btnUrl = btn.hasAttribute("href") ? btn.getAttribute("href") : null,
-      urlArray = btnUrl.split("?"),
+      btnUrl = btn.hasAttribute('href') ? btn.getAttribute('href') : null,
+      urlArray = btnUrl.split('?'),
       url = `?${urlArray[urlArray.length - 1]}`;
 
     const response = await this.getCollectionResultsPage(url, direction);
@@ -819,9 +882,9 @@ const sectionCollection = {
   setUserId() {
     const storedId = getCookie('ssUserId');
     if (storedId) {
-      this.userId = storedId
+      this.userId = storedId;
     } else {
-      const newUuid = uuid.v4()
+      const newUuid = uuid.v4();
       this.userId = newUuid;
       setCookie('ssUserId', newUuid, 365);
     }
@@ -830,26 +893,33 @@ const sectionCollection = {
   setSessionId() {
     const storedId = getCookie('ssSessionIdNamespace');
     if (storedId) {
-      this.sessionId = storedId
+      this.sessionId = storedId;
     } else {
-      const newUuid = uuid.v4()
+      const newUuid = uuid.v4();
       this.sessionId = newUuid;
       setCookie('ssSessionIdNamespace', newUuid);
     }
   },
 
   setPageLoadId() {
-    const newUuid = uuid.v4()
+    const newUuid = uuid.v4();
     this.pageLoadId = newUuid;
   },
 
   async getSearchspringSearchApiResults() {
-    const filtersString = this.state.activeFilters.length > 0 
-      ?  "&" + this.state.activeFilters.join('&')
-      : '';
-    const results = theme.collectionName ? `&bgfilter.collection_handle=${theme.collectionName}` : `&q=${theme.searchQuery}`;
-    const domain = window.location.href.indexOf('/search') === -1 ? window.location.href.split('?')[0] : window.location.href.split('&')[0];
-    const queryString = `&resultsFormat=json&userId=${this.userId}&sessionId=${this.sessionId}&pageLoadId=${this.pageLoadId}&domain=${domain}&bgfilter.ss_is_published=1${results}${filtersString}&resultsPerPage=${theme.itemsPerPage}&page=${this.state.pageNum}&redirectResponse=minimal${this.state.sortBy ? `&${this.state.sortBy}` : ''}`;
+    const filtersString = this.state.activeFilters.length > 0 ? '&' + this.state.activeFilters.join('&') : '';
+    const results = theme.collectionName
+      ? `&bgfilter.collection_handle=${theme.collectionName}`
+      : `&q=${theme.searchQuery}`;
+    const domain =
+      window.location.href.indexOf('/search') === -1
+        ? window.location.href.split('?')[0]
+        : window.location.href.split('&')[0];
+    const queryString = `&resultsFormat=json&userId=${this.userId}&sessionId=${this.sessionId}&pageLoadId=${
+      this.pageLoadId
+    }&domain=${domain}&bgfilter.ss_is_published=1${results}${filtersString}&resultsPerPage=${theme.itemsPerPage}&page=${
+      this.state.pageNum
+    }&redirectResponse=minimal${this.state.sortBy ? `&${this.state.sortBy}` : ''}`;
     const url = `${searchspringEndpoints.root}${searchspringEndpoints.search}${queryString}`;
     const json = await getJsonFetchResponse(url);
 
@@ -863,9 +933,9 @@ const sectionCollection = {
     this.elements.resultsContainer.appendChild(spinner);
     this.elements.resultsContainer.classList.add(classes.loading);
 
-    if(window.innerWidth < 960) {
-      window.scrollTo(0,0);
-    };
+    if (window.innerWidth < 960) {
+      window.scrollTo(0, 0);
+    }
   },
 
   setLoaded() {
@@ -876,43 +946,52 @@ const sectionCollection = {
 
   enableUI(blacklist = []) {
     // Enable bits of UI individually
-    if (this.elements.filtersOpen && !blacklist.includes(this.elements.filtersOpen)) this.elements.filtersOpen.removeAttribute("disabled");
-    this.elements.filtersCategoryToggles.forEach((x) => x.removeAttribute("disabled"));
+    if (this.elements.filtersOpen && !blacklist.includes(this.elements.filtersOpen))
+      this.elements.filtersOpen.removeAttribute('disabled');
+    this.elements.filtersCategoryToggles.forEach((x) => x.removeAttribute('disabled'));
     this.elements.filtersLinks.forEach((x) => x.classList.remove(classes.disabled));
     if (this.elements.filtersClear && !blacklist.includes(this.elements.filtersClear))
       this.elements.filtersClear.forEach((link) => {
         link.classList.remove(classes.disabled);
       });
-    if (this.elements.filtersApply && !blacklist.includes(this.elements.filtersApply)) this.elements.filtersApply.removeAttribute("disabled");
+    if (this.elements.filtersApply && !blacklist.includes(this.elements.filtersApply))
+      this.elements.filtersApply.removeAttribute('disabled');
 
-    if (this.elements.collectionSort && !blacklist.includes(this.elements.collectionSort)) this.elements.collectionSort.removeAttribute("disabled", true);
-    if (this.elements.collectionProducts && !blacklist.includes(this.elements.collectionProducts)) this.elements.collectionProducts.classList.remove(classes.loading);
-    if (this.elements.collectionPagination && !blacklist.includes(this.elements.collectionPagination)) this.elements.collectionPagination.classList.remove(classes.loading);
+    if (this.elements.collectionSort && !blacklist.includes(this.elements.collectionSort))
+      this.elements.collectionSort.removeAttribute('disabled', true);
+    if (this.elements.collectionProducts && !blacklist.includes(this.elements.collectionProducts))
+      this.elements.collectionProducts.classList.remove(classes.loading);
+    if (this.elements.collectionPagination && !blacklist.includes(this.elements.collectionPagination))
+      this.elements.collectionPagination.classList.remove(classes.loading);
 
     if (theme.enableInfiniteResults) {
-      if (this.elements.collectionPaginationMoreBtn && !blacklist.includes(this.elements.collectionPaginationMoreBtn)) this.elements.collectionPaginationMoreBtn.classList.remove(classes.loading);
-      if (this.elements.collectionPaginationLessBtn && !blacklist.includes(this.elements.collectionPaginationLessBtn)) this.elements.collectionPaginationLessBtn.classList.remove(classes.loading);
+      if (this.elements.collectionPaginationMoreBtn && !blacklist.includes(this.elements.collectionPaginationMoreBtn))
+        this.elements.collectionPaginationMoreBtn.classList.remove(classes.loading);
+      if (this.elements.collectionPaginationLessBtn && !blacklist.includes(this.elements.collectionPaginationLessBtn))
+        this.elements.collectionPaginationLessBtn.classList.remove(classes.loading);
     }
   },
 
   disableUI() {
     // Disable bits of UI individually
-    if (this.elements.filtersOpen) this.elements.filtersOpen.setAttribute("disabled", true);
-    this.elements.filtersCategoryToggles.forEach((x) => x.setAttribute("disabled", true));
+    if (this.elements.filtersOpen) this.elements.filtersOpen.setAttribute('disabled', true);
+    this.elements.filtersCategoryToggles.forEach((x) => x.setAttribute('disabled', true));
     this.elements.filtersLinks.forEach((x) => x.classList.add(classes.disabled));
     if (this.elements.filtersClear)
       this.elements.filtersClear.forEach((link) => {
         link.classList.add(classes.disabled);
       });
-    if (this.elements.filtersApply) this.elements.filtersApply.setAttribute("disabled", true);
+    if (this.elements.filtersApply) this.elements.filtersApply.setAttribute('disabled', true);
 
-    if (this.elements.collectionSort) this.elements.collectionSort.setAttribute("disabled", true);
+    if (this.elements.collectionSort) this.elements.collectionSort.setAttribute('disabled', true);
     if (this.elements.collectionProducts) this.elements.collectionProducts.classList.add(classes.loading);
     if (this.elements.collectionPagination) this.elements.collectionPagination.classList.add(classes.loading);
 
     if (theme.enableInfiniteResults) {
-      if (this.elements.collectionPaginationMoreBtn) this.elements.collectionPaginationMoreBtn.classList.add(classes.loading);
-      if (this.elements.collectionPaginationLessBtn) this.elements.collectionPaginationLessBtn.classList.add(classes.loading);
+      if (this.elements.collectionPaginationMoreBtn)
+        this.elements.collectionPaginationMoreBtn.classList.add(classes.loading);
+      if (this.elements.collectionPaginationLessBtn)
+        this.elements.collectionPaginationLessBtn.classList.add(classes.loading);
     }
   },
 
@@ -950,18 +1029,13 @@ const sectionCollection = {
   },
 
   onError(ex) {
-    console.warn("Collection:", ex);
+    console.warn('Collection:', ex);
 
     // Recover the UI
-    this.setState("isFetching", false);
+    this.setState('isFetching', false);
     this.enableUI();
-  }
+  },
 };
+
 const section = document.getElementById(`section-${themeName}`);
 sectionCollection.onFiltersInit(section);
-
-if (themeName === 'collection') {
-  theme.sections.register('collection', sectionCollection);
-} else {
-  theme.sections.register('search', sectionCollection);
-}

@@ -67,6 +67,7 @@
   "license": "UNLICENSED",
   "dependencies": {
     "babel-polyfill": "^6.26.0",
-    "gsap": "^3.12.2"
+    "gsap": "^3.12.2",
+    "uuid": "^9.0.1"
   }
 }

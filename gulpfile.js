@@ -206,6 +206,16 @@ exports.default = series(css_theme, css_sections, css_snippets, js_components, j
 // Watch tasks
 exports.watch = function () {
   watch(input_file_patterns.css, { ignoreInitial: false }, series(css_theme, css_sections, css_snippets));
-  watch(input_file_patterns.js, { ignoreInitial: false }, series(js_theme, js_sections, js_snippets, js_components));
-  watch(input_file_patterns.svg, { ignoreInitial: false }, svg_theme);
+  watch(
+    input_file_patterns.js,
+    { ignoreInitial: false },
+    series(
+      js_theme,
+      js_sections,
+      js_snippets
+      // uncomment if separate component files added
+      // ,js_components
+    )
+  );
+  // watch(input_file_patterns.svg, { ignoreInitial: false }, svg_theme);
 };
